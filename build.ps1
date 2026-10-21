@@ -1,7 +1,7 @@
 # build.ps1
 # Packages the extension into two loadable zips under .\dist\ :
-#   - onedrive-pdf-download-unlocker-<version>-chrome.zip   (manifest.json as-is)
-#   - onedrive-pdf-download-unlocker-<version>-firefox.zip  (Firefox manifest generated from manifest.json)
+#   - onedrive-download-unlocker-<version>-chrome.zip   (manifest.json as-is)
+#   - onedrive-download-unlocker-<version>-firefox.zip  (Firefox manifest generated from manifest.json)
 # <version> is read from manifest.json, so the file names always match the release.
 #
 # Why two zips: a folder can only have one active manifest.json, but Chrome
@@ -67,7 +67,7 @@ function New-Zip($srcDir, $zipPath) {
 
 $manifestText = [System.IO.File]::ReadAllText((Join-Path $root "manifest.json"), $utf8NoBom)
 $version = (ConvertFrom-Json $manifestText).version
-$base = "onedrive-pdf-download-unlocker-$version"
+$base = "onedrive-download-unlocker-$version"
 
 Reset-Dir $dist
 
@@ -86,7 +86,7 @@ $ff.permissions = @($ff.permissions | Where-Object { $_ -ne "debugger" })
 $ff.background = [ordered]@{ scripts = @("background.js") }
 $ff | Add-Member -NotePropertyName "browser_specific_settings" -NotePropertyValue ([ordered]@{
     gecko = [ordered]@{
-        id = "onedrive-pdf-download-unlocker@chidi0716"
+        id = "onedrive-download-unlocker@chidi0716"
         strict_min_version = "140.0"
         # Required by addons.mozilla.org for new add-ons (Firefox's built-in
         # data consent). The extension sends nothing to its developer.

@@ -1,6 +1,6 @@
 **English** | [繁體中文](./README.zh-TW.md)
 
-# OneDrive / SharePoint PDF Download Unlocker (Browser Extension)
+# OneDrive / SharePoint Download Unlocker (Browser Extension)
 
 Last updated: 2026-10-09 (version 1.2.1)
 
@@ -39,7 +39,7 @@ Not published on any store yet — install it as an unpacked / temporary extensi
 
 ### Chrome / Edge
 
-1. Go to this repo's [Releases](../../releases) page and download the latest `onedrive-pdf-download-unlocker-<version>-chrome.zip`, then unzip it (or just clone/download this repo's source directly).
+1. Go to this repo's [Releases](../../releases) page and download the latest `onedrive-download-unlocker-<version>-chrome.zip`, then unzip it (or just clone/download this repo's source directly).
 2. Open Chrome (or Edge) and go to `chrome://extensions` (`edge://extensions` on Edge).
 3. Turn on "Developer mode" in the top right.
 4. Click "Load unpacked" and select the unzipped folder (it should contain `manifest.json` directly).
@@ -49,9 +49,9 @@ Not published on any store yet — install it as an unpacked / temporary extensi
 
 ### Firefox (temporary load)
 
-Firefox uses a separate package (`onedrive-pdf-download-unlocker-<version>-firefox.zip`) because it needs a different `background` manifest key than Chrome. The zip already ships the correct `manifest.json`, so just:
+Firefox uses a separate package (`onedrive-download-unlocker-<version>-firefox.zip`) because it needs a different `background` manifest key than Chrome. The zip already ships the correct `manifest.json`, so just:
 
-1. Download `onedrive-pdf-download-unlocker-<version>-firefox.zip` from [Releases](../../releases) and unzip it.
+1. Download `onedrive-download-unlocker-<version>-firefox.zip` from [Releases](../../releases) and unzip it.
 2. Go to `about:debugging#/runtime/this-firefox`.
 3. Click "Load Temporary Add-on…" and select the `manifest.json` inside the unzipped folder.
 4. Open an OneDrive / SharePoint PDF preview page to test.

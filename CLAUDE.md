@@ -14,9 +14,9 @@ Plain JavaScript, no build step, no dependencies, no tests in the repo. User-fac
 ## Commands
 
 - Syntax check (the only automated check): `for f in *.js; do node --check "$f"; done`
-- Package: `pwsh build.ps1` (or `powershell -ExecutionPolicy Bypass -File build.ps1` on Windows) → `dist/onedrive-pdf-download-unlocker-<version>-chrome.zip` and `-firefox.zip`. `<version>` comes from `manifest.json`. `dist/` and zips are git-ignored; release zips are attached to GitHub Releases by hand.
+- Package: `pwsh build.ps1` (or `powershell -ExecutionPolicy Bypass -File build.ps1` on Windows) → `dist/onedrive-download-unlocker-<version>-chrome.zip` and `-firefox.zip`. `<version>` comes from `manifest.json`. `dist/` and zips are git-ignored; release zips are attached to GitHub Releases by hand.
 - Run in Chrome: `chrome://extensions` → Developer mode → Load unpacked → repo root. Firefox needs the built firefox zip (its manifest only exists inside it).
-- Validate the Firefox package the way addons.mozilla.org does: `npx addons-linter dist/onedrive-pdf-download-unlocker-<version>-firefox.zip` (must report 0 errors; the `debugger.*` / `innerHTML` warnings are known and harmless).
+- Validate the Firefox package the way addons.mozilla.org does: `npx addons-linter dist/onedrive-download-unlocker-<version>-firefox.zip` (must report 0 errors; the `debugger.*` / `innerHTML` warnings are known and harmless).
 - Sign for self-distribution (unlisted): unzip the firefox zip to a folder, then `npx web-ext sign --channel=unlisted --source-dir <folder> --api-key "$WEB_EXT_API_KEY" --api-secret "$WEB_EXT_API_SECRET"`. Credentials are the owner's AMO API keys and are never committed; each signed version number can only be used once.
 
 ## Architecture

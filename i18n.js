@@ -11,7 +11,7 @@
   const STRINGS = {
     en: {
       popupTitleLine1: "OneDrive / SharePoint",
-      popupTitleLine2: "PDF Downloader",
+      popupTitleLine2: "Download Unlocker",
       langLabel: "Language",
       helpSummary: "How to use",
       helpStep1: "Open the OneDrive / SharePoint <b>PDF preview tab</b>",
@@ -70,7 +70,7 @@
     },
     "zh-Hant": {
       popupTitleLine1: "OneDrive / SharePoint",
-      popupTitleLine2: "PDF 下載器",
+      popupTitleLine2: "下載解鎖工具",
       langLabel: "語言",
       helpSummary: "使用說明",
       helpStep1: "開啟 OneDrive / SharePoint 的 <b>PDF 預覽分頁</b>",

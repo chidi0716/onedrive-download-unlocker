@@ -1,6 +1,6 @@
 [English](./README.md) | **繁體中文**
 
-# OneDrive / SharePoint PDF 下載限制繞過工具（瀏覽器擴充功能）
+# OneDrive / SharePoint 下載限制繞過工具（瀏覽器擴充功能）
 
 最後更新：2026-10-09（版本 1.2.1）
 
@@ -39,7 +39,7 @@
 
 ### Chrome / Edge
 
-1. 到本專案的 [Releases](../../releases) 頁面，下載最新版的 `onedrive-pdf-download-unlocker-<版本>-chrome.zip` 並解壓縮（或直接 clone/下載這個 repo 的原始碼）。
+1. 到本專案的 [Releases](../../releases) 頁面，下載最新版的 `onedrive-download-unlocker-<版本>-chrome.zip` 並解壓縮（或直接 clone/下載這個 repo 的原始碼）。
 2. 開啟 Chrome（或 Edge），網址列輸入 `chrome://extensions`（Edge 為 `edge://extensions`）。
 3. 右上角開啟「開發人員模式」。
 4. 點「載入未封裝項目」，選擇剛剛解壓縮出來的資料夾（裡面要能直接看到 `manifest.json`）。
@@ -49,9 +49,9 @@
 
 ### Firefox（臨時載入）
 
-Firefox 需要跟 Chrome 不同的 `background` manifest 設定，所以用另一個打包檔（`onedrive-pdf-download-unlocker-<版本>-firefox.zip`）。該 zip 內已附上正確的 `manifest.json`，直接：
+Firefox 需要跟 Chrome 不同的 `background` manifest 設定，所以用另一個打包檔（`onedrive-download-unlocker-<版本>-firefox.zip`）。該 zip 內已附上正確的 `manifest.json`，直接：
 
-1. 從 [Releases](../../releases) 下載 `onedrive-pdf-download-unlocker-<版本>-firefox.zip` 並解壓縮。
+1. 從 [Releases](../../releases) 下載 `onedrive-download-unlocker-<版本>-firefox.zip` 並解壓縮。
 2. 網址列輸入 `about:debugging#/runtime/this-firefox`。
 3. 點「載入臨時附加元件…」，選擇解壓後資料夾裡的 `manifest.json`。
 4. 到 OneDrive / SharePoint 的 PDF 預覽頁面測試。

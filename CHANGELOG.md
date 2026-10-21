@@ -14,6 +14,10 @@
   - Firefox 的擷取是重新渲染，不受螢幕原生解析度上限限制。
 - 彈出視窗在 Firefox 上改顯示「請讓分頁保持在最前面」的提示（取代 Chrome 的偵錯提示列說明）。
 
+### 變更
+
+- **更名為「OneDrive / SharePoint Download Unlocker」**（拿掉 PDF，因為現在也能匯出投影片）。打包檔名改為 `onedrive-download-unlocker-<版本>-chrome.zip`／`-firefox.zip`，Firefox 附加元件 id 定為 `onedrive-download-unlocker@chidi0716`。
+
 ### 驗證
 
 - 在 Linux 上的 Firefox 157 對真實 50 張 SharePoint 簡報完整匯出（約 48 秒），50 張逐張檢查皆正確；未點圖示時會正確顯示提示。尚未在實體電腦上確認。

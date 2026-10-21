@@ -1,6 +1,6 @@
 # 隱私權政策 / Privacy Policy
 
-**OneDrive / SharePoint PDF Download Unlocker**
+**OneDrive / SharePoint Download Unlocker**
 
 最後更新 / Last updated: 2026-10-21
 
