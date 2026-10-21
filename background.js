@@ -586,24 +586,146 @@ function endSlideExport(tabId) {
   cancelledSlideTabs.delete(tabId);
   if (!slideExportByTab[tabId]) return;
   delete slideExportByTab[tabId];
-  chrome.debugger.detach({ tabId }, () => void chrome.runtime.lastError);
+  if (USE_CDP) chrome.debugger.detach({ tabId }, () => void chrome.runtime.lastError);
+}
+
+// ---- Slide export without the debugger (Firefox) ----
+// Firefox has no chrome.debugger, but it offers what the debugger is used for:
+// - captureVisibleTab takes a clip `rect` and a `scale` and RE-RENDERS that
+//   area at the scale (drawSnapshot), so a slide can be captured sharply and
+//   even above the screen's native resolution — no infobar, no window flash.
+//   It needs the activeTab grant (the user clicked the extension icon on this
+//   page) because we deliberately don't ask for <all_urls>.
+// - PowerPoint for the web doesn't check isTrusted: a keydown whose keyCode is
+//   set, dispatched from the page's own (MAIN) world, moves the thumbnail
+//   list, and a full pointer/mouse event sequence clicks a thumbnail. Both
+//   were verified on a real SharePoint deck in Firefox.
+const USE_CDP = !!chrome.debugger;
+const NEED_ACTIVE_TAB = "ODPDF_NEED_ACTIVETAB";
+
+// Offset of the viewer iframe in the top page (CSS px), found from the top
+// frame. Same picking rules as computeOffset (CDP) above.
+async function fxComputeOffset(tabId, frameId, frameUrl) {
+  if (frameId === 0) return { x: 0, y: 0 };
+  const [res] = await chrome.scripting.executeScript({
+    target: { tabId, frameIds: [0] },
+    args: [new URL(frameUrl).origin],
+    func: (origin) => {
+      const vw = window.innerWidth, vh = window.innerHeight;
+      const frames = [...document.querySelectorAll("iframe")];
+      const pick =
+        frames.find((f) => { try { return new URL(f.src, location.href).origin === origin; } catch (e) { return false; } }) ||
+        frames.find((f) => /^WacFrame_/i.test(f.id || f.name || "")) ||
+        frames.map((f) => [f, f.getBoundingClientRect()]).filter(([, b]) => b.width > 0 && b.height > 0)
+          .sort((a, b) => b[1].width * b[1].height - a[1].width * a[1].height).map(([f]) => f)[0];
+      if (!pick) return { x: 0, y: 0 };
+      const b = pick.getBoundingClientRect();
+      const cs = getComputedStyle(pick);
+      const x = b.x + parseFloat(cs.borderLeftWidth) + parseFloat(cs.paddingLeft);
+      const y = b.y + parseFloat(cs.borderTopWidth) + parseFloat(cs.paddingTop);
+      if (Math.abs(x) > vw * 0.2 || y < -1 || y > vh * 0.2) return { x: 0, y: 0 };
+      return { x, y };
+    },
+  });
+  return (res && res.result) || { x: 0, y: 0 };
+}
+
+async function fxBeginSlideExport(tabId, frameId, frameUrl, withImages) {
+  const tab = await chrome.tabs.get(tabId);
+  const offset = await fxComputeOffset(tabId, frameId, frameUrl);
+  if (withImages) {
+    // Fail fast, with a clear message, if this page has no activeTab grant.
+    try {
+      await chrome.tabs.captureVisibleTab(tab.windowId, { format: "jpeg", quality: 10, rect: { x: 0, y: 0, width: 4, height: 4 }, scale: 1 });
+    } catch (e) {
+      throw new Error(/activeTab|permission/i.test(String(e && e.message)) ? NEED_ACTIVE_TAB : String(e && e.message));
+    }
+  }
+  slideExportByTab[tabId] = { offset, frameId, frameUrl, windowId: tab.windowId };
+  return offset;
+}
+
+// captureVisibleTab captures whatever tab is in front, so pause while the user
+// has switched away instead of capturing the wrong page.
+async function fxWaitTabInFront(tabId) {
+  for (let i = 0; i < 1200; i++) { // up to ~10 min
+    const t = await chrome.tabs.get(tabId);
+    if (t.active) return;
+    await new Promise((r) => setTimeout(r, 500));
+    if (!slideExportByTab[tabId]) throw noSessionError(tabId);
+  }
+  throw new Error("the PowerPoint tab stayed in the background");
+}
+
+async function fxCaptureSlide(tabId, rect, scale, jpeg, dpr) {
+  const st = slideExportByTab[tabId];
+  if (!st) throw noSessionError(tabId);
+  await fxWaitTabInFront(tabId);
+  const quality = jpeg >= 1 && jpeg <= 100 ? jpeg : 80;
+  // slides.js divides its scale by devicePixelRatio for CDP; Firefox's scale
+  // is device pixels per CSS pixel already, so undo that.
+  const url = await chrome.tabs.captureVisibleTab(st.windowId, {
+    format: "jpeg",
+    quality,
+    rect: { x: st.offset.x + rect.x, y: st.offset.y + rect.y, width: rect.width, height: rect.height },
+    scale: (scale || 1) * (dpr || 1),
+  });
+  return url.slice(url.indexOf(",") + 1); // base64 JPEG, like the CDP path
+}
+
+async function fxSlideInput(tabId, input) {
+  const st = slideExportByTab[tabId];
+  if (!st) throw noSessionError(tabId);
+  if (input.kind === "move") return; // a synthetic move can't move the real pointer; nothing to do
+  const code = KEY_CODES[input.key];
+  if (input.kind === "key" && !code) throw new Error("unsupported key " + input.key);
+  await chrome.scripting.executeScript({
+    target: { tabId, frameIds: [st.frameId] },
+    world: "MAIN", // keyCode must be visible to the page's own handlers
+    args: [input, code || 0],
+    func: (inp, keyCode) => {
+      if (inp.kind === "key") {
+        const mk = (type) => {
+          const e = new KeyboardEvent(type, { key: inp.key, code: inp.key, bubbles: true, cancelable: true });
+          Object.defineProperty(e, "keyCode", { get: () => keyCode });
+          Object.defineProperty(e, "which", { get: () => keyCode });
+          return e;
+        };
+        const t = document.activeElement || document.body;
+        t.dispatchEvent(mk("keydown"));
+        t.dispatchEvent(mk("keyup"));
+      } else if (inp.kind === "click") {
+        const el = document.elementFromPoint(inp.x, inp.y);
+        if (!el) return;
+        const o = { bubbles: true, cancelable: true, clientX: inp.x, clientY: inp.y, button: 0, buttons: 1, view: window, pointerId: 1, pointerType: "mouse", isPrimary: true };
+        for (const [type, C] of [["pointerdown", PointerEvent], ["mousedown", MouseEvent], ["pointerup", PointerEvent], ["mouseup", MouseEvent], ["click", MouseEvent]]) {
+          el.dispatchEvent(new C(type, o));
+        }
+      }
+    },
+  });
 }
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg && msg.type === "SLIDES_BEGIN") {
-    beginSlideExport(sender.tab.id, sender.frameId, sender.url)
-      .then((offset) => sendResponse({ ok: true, offset }))
+    // `upscale`: whether captures may exceed the display's native resolution
+    // (Firefox re-renders at any scale; CDP returned bad data above native).
+    const begin = USE_CDP
+      ? beginSlideExport(sender.tab.id, sender.frameId, sender.url)
+      : fxBeginSlideExport(sender.tab.id, sender.frameId, sender.url, msg.withImages !== false);
+    begin
+      .then((offset) => sendResponse({ ok: true, offset, upscale: !USE_CDP }))
       .catch((e) => sendResponse({ ok: false, error: e.message }));
     return true;
   }
   if (msg && msg.type === "SLIDES_CAPTURE") {
-    captureSlide(sender.tab.id, msg.rect, msg.scale, msg.jpeg)
+    (USE_CDP ? captureSlide(sender.tab.id, msg.rect, msg.scale, msg.jpeg) : fxCaptureSlide(sender.tab.id, msg.rect, msg.scale, msg.jpeg, msg.dpr))
       .then((data) => sendResponse({ ok: true, data }))
       .catch(async (e) => sendResponse({ ok: false, error: await slideErrorText(sender.tab.id, e) }));
     return true;
   }
   if (msg && msg.type === "SLIDES_INPUT") {
-    slideInput(sender.tab.id, msg.input)
+    (USE_CDP ? slideInput(sender.tab.id, msg.input) : fxSlideInput(sender.tab.id, msg.input))
       .then(() => sendResponse({ ok: true }))
       .catch(async (e) => sendResponse({ ok: false, error: await slideErrorText(sender.tab.id, e) }));
     return true;

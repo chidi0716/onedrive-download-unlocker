@@ -13,6 +13,8 @@ function fmtSize(bytes) {
 }
 
 const U = window.ODPDF_UTIL;
+// Firefox exports slides without the debugger (no "is debugging" bar).
+const IS_FIREFOX = chrome.runtime.getURL("").startsWith("moz-extension:");
 const sanitizeFilename = U.sanitizeFilename;
 
 function ensurePdfExt(name) {
@@ -276,7 +278,7 @@ function checkSlides(tab) {
     box.style.display = "block";
     setSlidesMode(true);
     document.getElementById("slidesHead").textContent = tr("slidesPopupHeading").replace("{n}", resp.total || "?");
-    document.getElementById("slidesNote").textContent = resp.busy ? tr("slidesStarted") : tr("slidesDebuggerNote");
+    document.getElementById("slidesNote").textContent = resp.busy ? tr("slidesStarted") : tr(IS_FIREFOX ? "slidesFirefoxNote" : "slidesDebuggerNote");
     for (const id of ["slidesPdf", "slidesText"]) document.getElementById(id).disabled = !!resp.busy;
   });
 }

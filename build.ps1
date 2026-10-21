@@ -10,9 +10,9 @@
 # The Firefox manifest is GENERATED from manifest.json (there is no separate
 # file to keep in sync — it used to drift, e.g. stuck on an old version):
 #   - background.service_worker -> background.scripts
-#   - drop the `debugger` permission and the PowerPoint slide-export content
-#     script (Firefox has no debugger API, so no slide export there)
-#   - drop version_name (Chrome-only key); Firefox-specific description
+#   - drop the `debugger` permission (Firefox has no debugger API; its slide
+#     export uses captureVisibleTab + activeTab instead, see background.js)
+#   - drop version_name (Chrome-only key)
 #   - add browser_specific_settings.gecko (add-on id, minimum Firefox 140,
 #     data_collection_permissions = none, which AMO requires for signing)
 #
@@ -81,11 +81,9 @@ New-Zip $chromeStage (Join-Path $dist "$base-chrome.zip")
 # --- Firefox (manifest generated from manifest.json) ---
 $ff = ConvertFrom-Json $manifestText
 $ff.PSObject.Properties.Remove("version_name")
-# No slide export on Firefox, so do not advertise it (AMO limit: 250 chars).
-$ff.description = "Download preview-only OneDrive / SharePoint PDFs in one click, with the original filename."
+# (same description as Chrome now that Firefox exports slides too)
 $ff.permissions = @($ff.permissions | Where-Object { $_ -ne "debugger" })
 $ff.background = [ordered]@{ scripts = @("background.js") }
-$ff.content_scripts = @($ff.content_scripts | Where-Object { $_.js -notcontains "slides.js" })
 $ff | Add-Member -NotePropertyName "browser_specific_settings" -NotePropertyValue ([ordered]@{
     gecko = [ordered]@{
         id = "onedrive-pdf-download-unlocker@chidi0716"

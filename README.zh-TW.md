@@ -66,7 +66,7 @@ Firefox 需要跟 Chrome 不同的 `background` manifest 設定，所以用另�
 powershell -ExecutionPolicy Bypass -File build.ps1
 ```
 
-zip 檔名會自動帶上 `manifest.json` 裡的版本號。Chrome 版直接使用 `manifest.json`；Firefox 版的 manifest 由它**自動產生**（service worker 改成 `background.scripts`、拿掉 `debugger` 權限與投影片匯出腳本、加上 Firefox 附加元件設定），不必另外維護第二份 manifest。Windows PowerShell 5.1 與 PowerShell 7+ 都能執行（macOS／Linux 用 `pwsh build.ps1`）。
+zip 檔名會自動帶上 `manifest.json` 裡的版本號。Chrome 版直接使用 `manifest.json`；Firefox 版的 manifest 由它**自動產生**（service worker 改成 `background.scripts`、拿掉 `debugger` 權限、加上 Firefox 附加元件設定），不必另外維護第二份 manifest。Windows PowerShell 5.1 與 PowerShell 7+ 都能執行（macOS／Linux 用 `pwsh build.ps1`）。
 
 ## 核心運作方式
 
@@ -74,7 +74,7 @@ zip 檔名會自動帶上 `manifest.json` 裡的版本號。Chrome 版直接使�
 - 偵測到候選檔案後，在頁面上浮出一個 `position: fixed` 的懸浮下載按鈕（用 `getBoundingClientRect()` 即時定位在工具列下方或原生下載按鈕旁，不會跟原生 UI 重疊）。
 - 點擊按鈕後，直接把抓到的內容存成本機檔案（用原始檔名）到下載資料夾。
 
-## PowerPoint 投影片匯出（Chrome / Edge）
+## PowerPoint 投影片匯出（Chrome / Edge / Firefox）
 
 除了 PDF 下載，1.2.0 起支援把 **PowerPoint 網頁版**開啟的簡報匯出保存，特別適合「只能檢視、封鎖下載」或套用敏感度標籤、拿不到原始 `.pptx` 的情境（例如老師想備份被鎖住的課程投影片）。
 
@@ -97,10 +97,16 @@ zip 檔名會自動帶上 `manifest.json` 裡的版本號。Chrome 版直接使�
 
 高解析度擷取透過 Chrome 的 debugger API 完成，因此擴充功能宣告了 `debugger` 權限；匯出期間 Chrome 上方會出現「正在對這個瀏覽器進行偵錯」提示列，這是**正常且必要**的現象，匯出結束會自動消失。
 
+### Firefox（1.3.0 新增）
+
+Firefox 沒有 debugger API，改用它自己的分頁截圖 API 擷取（沒有偵錯提示列，也不需要 `debugger` 權限）。差別有兩點：
+
+- 第一次匯出前，**先在 PowerPoint 頁面點一下工具列上的擴充功能圖示**（Firefox 要使用者在該頁互動過，才允許擴充功能截圖）。忘了也沒關係，狀態列會提示，點完圖示再重新開始即可。
+- 匯出期間**讓該分頁保持在最前面**：Firefox 擷取的是畫面上的內容。需要 Firefox 140 以上。
+
 ### 注意事項
 
 - **Arc 瀏覽器**只允許「表面截圖」，每張擷取時視窗會短暫閃進／閃出全螢幕；這是 Arc 的限制。Chrome／Edge 允許不經視窗表面的擷取方式，**預期不會閃**（依 API 行為推論，尚未在實機確認）。
-- **Firefox 不支援**投影片匯出（沒有 debugger API），PDF 下載功能仍可用。
 - 若另外裝了會強制解除防複製／防右鍵的擴充功能（例如 *Absolute Enable Right Click & Copy*），它們會在 PowerPoint 網頁版持續變動的 DOM 上不斷重掃，拖慢整個瀏覽器與匯出速度；匯出時請先停用該類擴充功能。
 
 ## 已完成的功能
@@ -116,7 +122,7 @@ zip 檔名會自動帶上 `manifest.json` 裡的版本號。Chrome 版直接使�
 9. **修掉懸浮按鈕「自己往下跑」的回授迴圈**：搜尋「頁面上原生下載按鈕」的選擇器，原本可能誤把擴充功能自己注入的按鈕當成原生按鈕（因為自己的 `aria-label` 文字裡也含有「Download」字樣），導致每次重新定位都把自己當錨點、越跑越下面、停不下來。現在搜尋時會明確排除自己注入的節點。
 10. **大型檔案不再受 64 MiB 限制**（issue #1）：超過 8 MB 的檔案改成每塊 8 MB 分批從背景傳到頁面，不再一次塞進單一訊息，因此不受瀏覽器約 64 MiB 的訊息上限影響（實測到 400 MB）。
 11. **支援 Chrome、Edge、Firefox**：Firefox 使用獨立的安裝包（見「安裝方式」），內含 Firefox 需要的背景腳本設定。
-12. **PowerPoint 投影片匯出（Chrome / Edge）**：把只能檢視／封鎖下載的簡報逐張擷取成圖片式 PDF 加文字檔，畫質可選、可從頁面右下角按鈕或彈出視窗啟動（見上方專章）。
+12. **PowerPoint 投影片匯出（Chrome / Edge / Firefox）**：把只能檢視／封鎖下載的簡報逐張擷取成圖片式 PDF 加文字檔，畫質可選、可從頁面右下角按鈕或彈出視窗啟動（見上方專章）。
 
 ## 檔案結構
 
@@ -141,12 +147,12 @@ zip 檔名會自動帶上 `manifest.json` 裡的版本號。Chrome 版直接使�
 
 ## 交付狀態
 
-目前版本 **1.2.1**。
+目前版本 **1.3.0**。
 
 - 所有 `.js` 檔通過語法檢查，載入執行無錯誤。
 - **PowerPoint 投影片匯出（1.2.0 新增）**：自 beta.1 起經多次實機測試（macOS + Arc）調校，已在 50 張規模的簡報上完整驗證翻頁、渲染等待、逐張擷取與 PDF/文字輸出，以及從彈出視窗啟動的三檔畫質。頁面內按鈕與 1.2.1 的改動已通過對模擬檢視器的自動化端對端測試，並在真實的 50 張 SharePoint 簡報上以無頭 Chromium 驗證（頁內按鈕、鍵盤翻頁、關閉通知；3 次匯出共 150 張逐張檢查皆正確），但尚未在實體電腦（如 macOS + Arc）上確認。
 - **大型檔案下載（issue #1）**：在 Chromium 中對一個「必須帶 `X-SPOPacToken` 標頭才給檔案」的模擬 SharePoint 伺服器做端對端測試，浮動按鈕與 popup 兩條路徑都測過，檔案大小涵蓋 8 MB、略超過 8 MB、70 MB、150 MB、400 MB，下載結果與原檔逐位元組完全一致。同樣的 70 MB 測試在 v1.0.0 會卡住，重現了原本的問題。
-- **Firefox（issue #2）**：已由提出需求的使用者確認可正常使用（投影片匯出除外，Firefox 不支援）。
+- **Firefox（issue #2）**：PDF 下載已由提出需求的使用者確認可正常使用。Firefox 投影片匯出（1.3.0 新增）已在 Linux 上的 Firefox 157 對同一份真實 50 張 SharePoint 簡報驗證（頁內按鈕、50 張逐張檢查皆正確，以及「請先點圖示」提示）；尚未在實體電腦上確認。
 - 遇到問題請透過 Issues 回報（瀏覽器、檔案大小、發生什麼狀況）。
 
 v1.0.0 仍保留在 [Releases](../../releases) 頁面，可作為退回的備援版本。
@@ -159,5 +165,5 @@ v1.0.0 仍保留在 [Releases](../../releases) 頁面，可作為退回的備援
 
 - 目前只覆蓋微軟全球商用雲（`*.sharepoint.com` 等），不含主權雲（`.sharepoint.us` / `.cn` / `.de`），若未來換到不同租戶環境可能需要再補。
 - 偵測邏輯靠網址關鍵字比對，若微軟未來改變這些端點的網址格式，可能需要更新 `URL_KEYWORDS`（在 `background.js`）。
-- 投影片匯出在 Arc 上每張會短暫閃全螢幕（Arc 只允許表面截圖），Chrome／Edge 預期不會（尚未實機確認）；Firefox 不支援投影片匯出。
+- 投影片匯出在 Arc 上每張會短暫閃全螢幕（Arc 只允許表面截圖），Chrome／Edge 預期不會（尚未實機確認）；Firefox 每個頁面匯出前需先點一次工具列圖示，且匯出時分頁要保持在最前面。
 - 投影片匯出目前為圖片式 PDF，文字另存在 `.txt`。**規劃中（下一版）**：可選取／可複製的隱形文字層，以及以 `deviceScaleFactor`（dsf）突破螢幕原生解析度的更高解析度輸出。

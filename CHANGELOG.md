@@ -2,6 +2,23 @@
 
 本專案版本紀錄遵循 [Keep a Changelog](https://keepachangelog.com/) 格式，版本號採用 [Semantic Versioning](https://semver.org/)。
 
+## [1.3.0] - 2026-10-21
+
+> Firefox 也能匯出 PowerPoint 投影片了。
+
+### 新增
+
+- **Firefox 投影片匯出**：Firefox 沒有 debugger API，改用瀏覽器內建的分頁截圖（`tabs.captureVisibleTab`，可指定範圍與倍率）擷取，用 `scripting` 在檢視器內送出帶 `keyCode` 的方向鍵翻頁。頁內按鈕、彈出視窗、畫質選項、部分保存都和 Chrome 版相同；沒有偵錯提示列，也不需要 `debugger` 權限。
+  - 第一次匯出前要先在 PowerPoint 頁面**點一下工具列上的擴充功能圖示**（Firefox 的 `activeTab` 規則）；沒點的話狀態列會提示。
+  - 匯出時分頁要保持在最前面。需要 Firefox 140 以上。
+  - Firefox 的擷取是重新渲染，不受螢幕原生解析度上限限制。
+- 彈出視窗在 Firefox 上改顯示「請讓分頁保持在最前面」的提示（取代 Chrome 的偵錯提示列說明）。
+
+### 驗證
+
+- 在 Linux 上的 Firefox 157 對真實 50 張 SharePoint 簡報完整匯出（約 48 秒），50 張逐張檢查皆正確；未點圖示時會正確顯示提示。尚未在實體電腦上確認。
+- Chrome 版回歸：模擬檢視器端對端測試 25/25 通過，真實 50 張簡報匯出正確（約 41 秒）。
+
 ## [1.2.1] - 2026-10-09
 
 > 修正版：依 1.2.0 發佈後的兩輪審查，修正錯誤與不實的文件描述、改善頁內按鈕與匯出的穩健性，並重構程式。功能與操作方式不變。

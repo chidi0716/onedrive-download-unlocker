@@ -55,6 +55,13 @@
   // The background reports this error when the user closed the browser's
   // "is debugging this browser" bar, which ends the capture session.
   const CANCELLED = "ODPDF_CANCELLED";
+  const NEED_ACTIVE_TAB = "ODPDF_NEED_ACTIVETAB";
+  // An error whose message is meant for the user as is (no stack trace).
+  function messageError(text) {
+    const e = new Error(text);
+    e.userMessage = true;
+    return e;
+  }
   function cancelledError() {
     const e = new Error("export cancelled");
     e.cancelled = true;
@@ -362,7 +369,7 @@
       const r = box.rect;
       // devicePixelRatio: the debugger screenshot renders at the display's
       // DPR, so divide it out to keep the output at outputWidth.
-      const res = await send({ type: "SLIDES_CAPTURE", rect: { x: r.left, y: r.top, width: r.width, height: r.height }, scale: outputWidth / r.width / (window.devicePixelRatio || 1), jpeg });
+      const res = await send({ type: "SLIDES_CAPTURE", rect: { x: r.left, y: r.top, width: r.width, height: r.height }, scale: outputWidth / r.width / (window.devicePixelRatio || 1), dpr: window.devicePixelRatio || 1, jpeg });
       if (!res || !res.ok) {
         if (res && res.error === CANCELLED) throw cancelledError();
         throw new Error((res && res.error) || "capture failed");
@@ -423,22 +430,30 @@
       }
     }
 
-    const begin = await send({ type: "SLIDES_BEGIN" });
-    if (!begin || !begin.ok) throw new Error((begin && begin.error) || "could not start capture");
+    const begin = await send({ type: "SLIDES_BEGIN", withImages });
+    if (!begin || !begin.ok) {
+      // Firefox captures via activeTab: the user must have clicked the
+      // extension icon on this page first.
+      if (begin && begin.error === NEED_ACTIVE_TAB) throw messageError(tr("slidesNeedActiveTab"));
+      throw new Error((begin && begin.error) || "could not start capture");
+    }
     let failure = null;
     try {
-      // The background has already waited for the "is debugging" bar to appear;
-      // just let the slide box settle after that resize before measuring it.
+      // With CDP the background has already waited for the "is debugging" bar
+      // to appear; just let the slide box settle after that resize.
       await waitLayoutQuiet(TIMING.layoutQuietMs, TIMING.layoutQuietMaxMs);
       let toastCleared = !withImages;
       if (withImages) {
         // Clamp the target width to the display's native resolution for the
-        // slide. Asking the screenshot API for more pixels than the display has
+        // slide. Asking the CDP screenshot for more pixels than the display has
         // (a high preset in a small window) makes it upscale, which some
-        // browsers answer with empty/invalid data. Never exceed native.
-        const b0 = V.currentSlideBox();
-        const native = b0 ? Math.floor(b0.rect.width * (window.devicePixelRatio || 1)) : 0;
-        if (native > 400 && native < outputWidth) outputWidth = native;
+        // browsers answer with empty/invalid data. Firefox re-renders the slide
+        // at the requested scale instead (begin.upscale), so no clamp there.
+        if (!begin.upscale) {
+          const b0 = V.currentSlideBox();
+          const native = b0 ? Math.floor(b0.rect.width * (window.devicePixelRatio || 1)) : 0;
+          if (native > 400 && native < outputWidth) outputWidth = native;
+        }
         V.hideHints(true);
         // Close the "no edit permission" toast now so it has gone by the first
         // capture; the first few slides check again in case it lands late.
@@ -563,7 +578,8 @@
         setStatus(tr("slidesCancelled") + partial, "error");
       } else {
         // Show the full error (and where it happened) so a tester can report it.
-        const msg = (e && e.stack) ? String(e.stack).split("\n").slice(0, 3).join("\n") : (e && e.message ? e.message : String(e));
+        const msg = e && e.userMessage ? e.message
+          : (e && e.stack) ? String(e.stack).split("\n").slice(0, 3).join("\n") : (e && e.message ? e.message : String(e));
         setStatus(tr("slidesFailed") + msg + (partial ? "\n" + partial.trim() : ""), "error");
       }
       console.error("[odpdf] export failed", e);

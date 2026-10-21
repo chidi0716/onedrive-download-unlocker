@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 A Manifest V3 browser extension (Chrome / Edge / Firefox) with two features:
 
 1. **PDF download** from OneDrive / SharePoint "preview only" pages: the background watches network requests, finds the one carrying the file content, and re-fetches it with the captured auth headers.
-2. **PowerPoint-for-web slide export** (Chrome / Edge only): walks a view-only deck slide by slide inside the PowerPoint viewer, captures each slide via the DevTools protocol (`chrome.debugger`), and saves an image-based PDF plus a `.txt` of the slide text.
+2. **PowerPoint-for-web slide export**: walks a view-only deck slide by slide inside the PowerPoint viewer, captures each slide (Chrome / Edge: DevTools protocol via `chrome.debugger`; Firefox: `tabs.captureVisibleTab`), and saves an image-based PDF plus a `.txt` of the slide text.
 
 Plain JavaScript, no build step, no dependencies, no tests in the repo. User-facing docs are bilingual (README.md / README.zh-TW.md); CHANGELOG.md is written in Traditional Chinese.
 
@@ -22,14 +22,17 @@ Plain JavaScript, no build step, no dependencies, no tests in the repo. User-fac
 ## Architecture
 
 ### Script contexts and load order
-- `background.js` — service worker (Chrome) / background script (Firefox). Request detection, downloads with chunked transfer, and the whole debugger (CDP) side of slide export.
+- `background.js` — service worker (Chrome) / background script (Firefox). Request detection, downloads with chunked transfer, and the privileged side of slide export (CDP on Chrome, `fx*` functions on Firefox).
 - Content scripts share globals that are loaded first, in manifest order: `i18n.js` → `ODPDF_I18N`, `util.js` → `ODPDF_UTIL` (filename sanitising, base64, chunked-transfer pull, `saveBlob`). The popup loads the same two via `<script>` tags.
   - Entry 1 (top frame only, SharePoint/OneDrive/officeapps): `content.js` — floating PDF download button, and on PowerPoint pages the on-page "Export slides" button.
   - Entry 2 (`*.officeapps.live.com`, `all_frames`): `slidepdf.js` (`ODPDF_PDF`, minimal JPEG→PDF writer), `slides-viewer.js` (`ODPDF_VIEWER`), `slides.js`. `slides.js` only activates in frames whose hostname contains `powerpoint`.
 - `popup.js` / `popup.html` — candidate list, language switch, slide-export box with quality (`chrome.storage.local` keys `odpdf_lang`, `odpdf_slide_quality`).
 
 ### Firefox
-`manifest.json` is the single source. `build.ps1` generates the Firefox manifest (service worker → `background.scripts`, drops the `debugger` permission and the slide-export content-script entry, drops `version_name`, uses a Firefox-specific description, adds `browser_specific_settings.gecko` with `strict_min_version` 140 and `data_collection_permissions: none`, which AMO requires for signing). Keep `description` ≤132 chars (Chrome Web Store) — AMO rejects >250. There is no `manifest.firefox.json`. `chrome.debugger` usage in background.js is guarded because it does not exist on Firefox. Bump the version only in `manifest.json`.
+`manifest.json` is the single source. `build.ps1` generates the Firefox manifest (service worker → `background.scripts`, drops the `debugger` permission, drops `version_name`, adds `browser_specific_settings.gecko` with `strict_min_version` 140 and `data_collection_permissions: none`, which AMO requires for signing). Keep `description` ≤132 chars (Chrome Web Store) — AMO rejects >250. There is no `manifest.firefox.json`. Bump the version only in `manifest.json`.
+
+### Firefox slide-export backend
+background.js picks a backend with `USE_CDP = !!chrome.debugger`; the `fx*` functions are the Firefox side behind the same messages. Capture is `tabs.captureVisibleTab(windowId, {rect, scale})` (re-renders, so no native-resolution clamp: `SLIDES_BEGIN` replies `upscale: true`). It needs an `activeTab` grant (user clicked the toolbar icon on that page); without it `SLIDES_BEGIN` fails with `ODPDF_NEED_ACTIVETAB` and slides.js shows `slidesNeedActiveTab`. Input runs via `scripting.executeScript({world:"MAIN"})` in the viewer frame: keydown/keyup with `keyCode` defined in the page world (Xray wrappers hide overrides made from the content-script world), clicks as a pointer/mouse sequence; mouse-move is a no-op. The tab must stay in front. Firefox ≥140.
 
 ### Slide export flow (messages)
 - Start: popup sends `SLIDES_RUN` to the tab, or `content.js` sends `SLIDES_START` → background relays `SLIDES_RUN` to all frames; only the ready viewer frame (slides.js) answers.
