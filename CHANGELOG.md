@@ -4,24 +4,26 @@
 
 ## [1.3.0] - 2026-10-21
 
-> Firefox 也能匯出 PowerPoint 投影片了。
+> Firefox 也能匯出 PowerPoint 投影片；專案更名為 OneDrive / SharePoint Download Unlocker。
 
 ### 新增
 
-- **Firefox 投影片匯出**：Firefox 沒有 debugger API，改用瀏覽器內建的分頁截圖（`tabs.captureVisibleTab`，可指定範圍與倍率）擷取，用 `scripting` 在檢視器內送出帶 `keyCode` 的方向鍵翻頁。頁內按鈕、彈出視窗、畫質選項、部分保存都和 Chrome 版相同；沒有偵錯提示列，也不需要 `debugger` 權限。
-  - 第一次匯出前要先在 PowerPoint 頁面**點一下工具列上的擴充功能圖示**（Firefox 的 `activeTab` 規則）；沒點的話狀態列會提示。
-  - 匯出時分頁要保持在最前面。需要 Firefox 140 以上。
-  - Firefox 的擷取是重新渲染，不受螢幕原生解析度上限限制。
-- 彈出視窗在 Firefox 上改顯示「請讓分頁保持在最前面」的提示（取代 Chrome 的偵錯提示列說明）。
+- **Firefox 投影片匯出**：用 Firefox 內建的分頁截圖（`tabs.captureVisibleTab`，可指定範圍與倍率）擷取，用 `scripting` 在檢視器內送出方向鍵翻頁。頁內按鈕、彈出視窗、畫質選項、部分保存都和 Chrome 版相同；沒有偵錯提示列，也不需要 `debugger` 權限。
+  - 匯出前要先在 PowerPoint 頁面點一下工具列上的擴充功能圖示（Firefox 的 `activeTab` 規則）；沒點的話狀態列會提示。
+  - 匯出期間分頁要保持在最前面。需要 Firefox 140 以上。
+  - Firefox 的輸出不受螢幕原生解析度上限限制。
+- 彈出視窗在 Firefox 上顯示「請讓分頁保持在最前面」的提示，取代 Chrome 的偵錯提示列說明。
 
 ### 變更
 
-- **更名為「OneDrive / SharePoint Download Unlocker」**（拿掉 PDF，因為現在也能匯出投影片）。打包檔名改為 `onedrive-download-unlocker-<版本>-chrome.zip`／`-firefox.zip`，Firefox 附加元件 id 定為 `onedrive-download-unlocker@chidi0716`。
+- **更名為 OneDrive / SharePoint Download Unlocker**（中文：下載解鎖工具），因為功能已不只 PDF。打包檔名改為 `onedrive-download-unlocker-<版本>-chrome.zip`／`-firefox.zip`，Firefox 附加元件 id 為 `onedrive-download-unlocker@chidi0716`。
+- README（中英）重寫：依「下載 PDF」「匯出投影片」兩個功能整理使用方式，列出各瀏覽器支援，精簡測試紀錄。
+- 隱私權政策補上投影片匯出的說明，以及 Firefox 如何使用 `activeTab`／`scripting`。
 
-### 驗證
+### 測試
 
-- 在 Linux 上的 Firefox 157 對真實 50 張 SharePoint 簡報完整匯出（約 48 秒），50 張逐張檢查皆正確；未點圖示時會正確顯示提示。尚未在實體電腦上確認。
-- Chrome 版回歸：模擬檢視器端對端測試 25/25 通過，真實 50 張簡報匯出正確（約 41 秒）。
+- Firefox 157：真實 50 張 SharePoint 簡報完整匯出，約 48 秒，50 張逐張檢查皆正確；未點圖示時正確顯示提示。
+- Chromium：模擬檢視器自動化測試 25/25 通過；同一份 50 張簡報匯出正確，約 41 秒。
 
 ## [1.2.1] - 2026-10-09
 

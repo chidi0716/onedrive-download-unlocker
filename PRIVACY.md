@@ -10,13 +10,16 @@
 
 ### 這個擴充功能做什麼
 
-這個擴充功能在你開啟 OneDrive 或 SharePoint 的 PDF 預覽分頁時，自動偵測該分頁載入的檔案內容請求，並讓你用一個按鈕把檔案另存到本機的「下載」資料夾，取代手動用瀏覽器開發工具或 PowerShell 抓取網址的流程。
+這個擴充功能做兩件事：
+
+- 在你開啟 OneDrive 或 SharePoint 的 PDF 預覽分頁時，偵測該分頁載入的檔案內容請求，讓你用一個按鈕把檔案存到本機的「下載」資料夾。
+- 在 PowerPoint 網頁版中，逐張擷取你正在檢視的簡報，在本機組成 PDF 與文字檔。
 
 ### 我們不收集、不上傳任何資料
 
 這個擴充功能的所有運作都只發生在你自己的瀏覽器裡：
 
-- 偵測檔案請求、抓取檔案內容、重組檔案、觸發下載，全部都在你的電腦本機完成。
+- 偵測檔案請求、抓取檔案內容、擷取投影片、組成檔案、觸發下載，全部都在你的電腦本機完成。
 - 我們**不會**把你瀏覽的網址、檔案內容、檔案名稱、帳號資訊或任何其他資料傳送到任何外部伺服器、第三方服務，或開發者自己的伺服器（因為根本沒有這樣的伺服器存在）。
 - 沒有任何分析、追蹤、廣告或遠端記錄功能。
 
@@ -46,13 +49,16 @@
 
 ### What this extension does
 
-This extension watches the network requests made by OneDrive / SharePoint PDF preview pages, detects the request that actually carries the file's content, and lets you save it to your local Downloads folder with one click — replacing a manual DevTools / PowerShell workflow.
+This extension does two things:
+
+- On OneDrive / SharePoint PDF preview pages, it detects the request that carries the file's content and lets you save the file to your Downloads folder with one click.
+- In PowerPoint for the web, it captures the deck you're viewing slide by slide and builds a PDF and a text file locally.
 
 ### We do not collect or transmit any data
 
 Everything this extension does happens entirely inside your own browser:
 
-- Detecting file requests, fetching file bytes, rebuilding the file, and triggering the download all happen locally on your machine.
+- Detecting file requests, fetching file bytes, capturing slides, building the files, and triggering the download all happen locally on your machine.
 - We do **not** send the URLs you visit, file contents, filenames, account information, or any other data to any external server, third-party service, or a server operated by the developer (no such server exists).
 - There is no analytics, tracking, advertising, or remote logging of any kind.
 
