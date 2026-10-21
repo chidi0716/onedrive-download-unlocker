@@ -20,17 +20,17 @@
 這個擴充功能的所有運作都只發生在你自己的瀏覽器裡：
 
 - 偵測檔案請求、抓取檔案內容、擷取投影片、組成檔案、觸發下載，全部都在你的電腦本機完成。
-- 我們**不會**把你瀏覽的網址、檔案內容、檔案名稱、帳號資訊或任何其他資料傳送到任何外部伺服器、第三方服務，或開發者自己的伺服器（因為根本沒有這樣的伺服器存在）。
+- 我們**不會**把你瀏覽的網址、檔案內容、檔案名稱、帳號資訊或任何其他資料傳送到任何外部伺服器、第三方服務，或開發者的伺服器（開發者沒有任何伺服器）。
 - 沒有任何分析、追蹤、廣告或遠端記錄功能。
 
 ### 本機儲存的資料
 
-擴充功能會用瀏覽器內建的 `chrome.storage.local`（純粹存在你自己的電腦上，不會同步到雲端、不會離開你的裝置）儲存兩項設定：
+擴充功能會用瀏覽器內建的 `chrome.storage.local`（只存在你的裝置上）儲存兩項設定：
 
 - 你選擇的顯示語言（英文或中文）。
 - 你選擇的投影片匯出畫質（標準／高／最高）。
 
-除此之外不會儲存任何其他內容；匯出的投影片與文字只會存成你「下載」資料夾裡的檔案；分頁關閉後，該分頁偵測到的檔案請求資訊也會自動清除，不會留存。
+除此之外不儲存任何內容。匯出的檔案只會存到你的「下載」資料夾；分頁關閉後，該分頁偵測到的請求資訊會自動清除。
 
 ### 使用到的權限與用途
 
@@ -38,10 +38,10 @@
 |---|---|
 | `webRequest` / `webNavigation` | 偵測 OneDrive / SharePoint 頁面載入的檔案內容請求，找出真正的 PDF/文件資料 |
 | `downloads` | 把抓到的檔案內容存成本機檔案 |
-| `activeTab` / `scripting` | 在目前分頁裡讀取檔案標題、觸發瀏覽器原生的下載動作。Firefox 的投影片匯出也用它們：`activeTab` 讓擴充功能在你點過工具列圖示的分頁上擷取畫面，`scripting` 用來在 PowerPoint 檢視器內翻頁 |
+| `activeTab` / `scripting` | 讀取目前分頁的檔案標題、觸發下載。Firefox 的投影片匯出也用它們擷取畫面與翻頁 |
 | `storage` | 只用來記住你選的顯示語言與投影片匯出畫質 |
-| `debugger`（Chrome / Edge） | 只用於「匯出投影片（PDF）」功能：在 PowerPoint 網頁版中翻頁並高解析度擷取投影片畫面。只在你按下匯出時、且只作用於該分頁，匯出結束立刻解除。擷取的畫面只在本機組成 PDF，不會傳出去。（Firefox 沒有此 API，改用 `activeTab` 搭配瀏覽器內建的分頁截圖完成同樣的事，擷取結果一樣只在本機組成 PDF。）|
-| `host_permissions`（限定 sharepoint.com、sharepointonline.com、onedrive.live.com、officeapps.live.com、1drv.ms、svc.ms、mcas.ms、login.microsoftonline.com、login.windows.net、spoprod-a.akamaihd.net） | 只在這些微軟 OneDrive / SharePoint 相關網域上運作（`svc.ms` 是實際傳送檔案內容的後端服務網域；`mcas.ms` 是部分企業/學校啟用的安全代理網域；其餘是登入與靜態資源網域），不會影響或讀取其他網站 |
+| `debugger`（Chrome / Edge） | 只用於匯出投影片：翻頁並擷取投影片畫面。只在你按下匯出時作用於該分頁，匯出結束立即解除 |
+| `host_permissions`（限定 sharepoint.com、sharepointonline.com、onedrive.live.com、officeapps.live.com、1drv.ms、svc.ms、mcas.ms、login.microsoftonline.com、login.windows.net、spoprod-a.akamaihd.net） | 只在這些微軟網域上運作（檔案內容、安全代理、登入與靜態資源），不讀取其他網站 |
 
 ---
 
@@ -59,17 +59,17 @@ This extension does two things:
 Everything this extension does happens entirely inside your own browser:
 
 - Detecting file requests, fetching file bytes, capturing slides, building the files, and triggering the download all happen locally on your machine.
-- We do **not** send the URLs you visit, file contents, filenames, account information, or any other data to any external server, third-party service, or a server operated by the developer (no such server exists).
+- We do **not** send the URLs you visit, file contents, filenames, account information, or any other data to any external server, third-party service, or the developer (the developer runs no servers).
 - There is no analytics, tracking, advertising, or remote logging of any kind.
 
 ### Data stored locally
 
-The extension uses the browser's built-in `chrome.storage.local` (which lives only on your own device and is never synced or transmitted) to remember exactly two settings:
+The extension uses the browser's built-in `chrome.storage.local` (stored only on your device) to remember two settings:
 
 - Your chosen display language (English or Chinese).
 - Your chosen slide-export quality (Standard / High / Max).
 
-Nothing else is stored; exported slides and text only become files in your Downloads folder. Detected file-request information for a tab is automatically cleared once that tab is closed.
+Nothing else is stored. Exported files go only to your Downloads folder, and a tab's detected requests are cleared when the tab closes.
 
 ### Permissions used and why
 
@@ -77,7 +77,7 @@ Nothing else is stored; exported slides and text only become files in your Downl
 |---|---|
 | `webRequest` / `webNavigation` | Detect the network request on OneDrive/SharePoint pages that carries the actual PDF/document content |
 | `downloads` | Save the fetched file content as a local file |
-| `activeTab` / `scripting` | Read the document title in the current tab and trigger the browser's native download action. Firefox's slide export also uses them: `activeTab` lets the extension capture the tab after you click its toolbar icon there, and `scripting` steps through slides inside the PowerPoint viewer |
+| `activeTab` / `scripting` | Read the current tab's document title and trigger downloads. Firefox's slide export also uses them to capture and step through slides |
 | `storage` | Remember only your chosen display language and slide-export quality |
-| `debugger` (Chrome / Edge) | Used only by "Export slides (PDF)": to step through slides in PowerPoint for the web and capture them at high resolution. It attaches only while you run an export, only to that tab, and detaches as soon as the export ends. Captures are assembled into a PDF locally and never sent anywhere. (Firefox lacks this API; it uses `activeTab` with the browser's built-in tab screenshot instead, and the captures are likewise assembled into a PDF locally.) |
-| `host_permissions` (limited to sharepoint.com, sharepointonline.com, onedrive.live.com, officeapps.live.com, 1drv.ms, svc.ms, mcas.ms, login.microsoftonline.com, login.windows.net, spoprod-a.akamaihd.net) | The extension only operates on these Microsoft OneDrive/SharePoint domains (`svc.ms` actually serves file content; `mcas.ms` is a security proxy domain some organizations enable; the rest are sign-in and static-asset domains) and does not access or affect any other website |
+| `debugger` (Chrome / Edge) | Used only by slide export: steps through and captures slides. Attached only to that tab while you export, and detached as soon as it ends |
+| `host_permissions` (limited to sharepoint.com, sharepointonline.com, onedrive.live.com, officeapps.live.com, 1drv.ms, svc.ms, mcas.ms, login.microsoftonline.com, login.windows.net, spoprod-a.akamaihd.net) | The extension only runs on these Microsoft domains (file content, security proxy, sign-in and static assets) and does not access other websites |

@@ -16,11 +16,7 @@ A browser extension (Manifest V3) for files on OneDrive / SharePoint that you ca
 
 ## Why
 
-Many schools and organizations set OneDrive / SharePoint files to "preview only": the page has no download button. The file content still reaches the browser through a network request; there's just no way to save it.
-
-Before this extension, saving one meant opening DevTools, digging through dozens of requests for the right one, copying its URL and auth headers (`Referer`, `X-SPOPacToken`, …), and re-sending it with something like PowerShell — for every single file.
-
-The extension does all of that for you. It watches the page's network requests, finds the one that carries the file, reuses the auth headers automatically, and puts a download button on the page.
+Files set to "preview only" have no download button, but their content still reaches the browser. Saving one used to mean finding the right request in DevTools, copying its URL and auth headers, and re-sending it by hand. The extension does this automatically and adds a download button to the page.
 
 ## Screenshots
 
@@ -38,7 +34,7 @@ The extension isn't on any store; install it from the [Releases](../../releases)
 2. Open `chrome://extensions` (Edge: `edge://extensions`) and turn on **Developer mode**.
 3. Click **Load unpacked** and pick the unzipped folder (the one containing `manifest.json`).
 
-The extension uses the `debugger` permission for slide capture. Chrome / Edge ask you to confirm it on install, and after an update you may need to click **Enable** again.
+Chrome / Edge ask you to confirm the `debugger` permission (used for slide capture). After an update, click **Enable** if the extension is turned off.
 
 ### Firefox
 
@@ -46,7 +42,7 @@ The extension uses the `debugger` permission for slide capture. Chrome / Edge as
 2. Open `about:debugging#/runtime/this-firefox`.
 3. Click **Load Temporary Add-on…** and pick `manifest.json` in the unzipped folder.
 
-Firefox removes temporary add-ons when it restarts, so load it again after each restart. A Mozilla-signed build that installs permanently is in the works.
+Temporary add-ons are removed when Firefox restarts; load it again after each restart.
 
 ## Usage
 
@@ -55,7 +51,7 @@ Firefox removes temporary add-ons when it restarts, so load it again after each 
 1. Open the PDF preview page on OneDrive / SharePoint.
 2. Click the **Download PDF** button that appears on the page. The file goes to your Downloads folder.
 
-If no button appears, reload the page (the extension only sees requests made after it's active), or open the popup and click **Rescan**.
+No button? Reload the page, or open the popup and click **Rescan**.
 
 ### Export slides
 
@@ -65,19 +61,19 @@ If no button appears, reload the page (the extension only sees requests made aft
 
 **Quality** (remembered between exports): Standard 1600px (small file), High 2000px, Max 2560px (near-print). On Chrome / Edge, output is capped at your display's native resolution.
 
-**On Chrome / Edge**, the browser shows an "is debugging this browser" bar during the export. That's how the extension captures slides; it goes away when the export ends. Closing the bar cancels the export.
+**On Chrome / Edge**, an "is debugging this browser" bar shows during the export and closes when it ends. Closing it cancels the export.
 
 **On Firefox:**
-- Click the extension's toolbar icon once on the PowerPoint page before exporting. Firefox only lets an extension capture a page you've clicked its icon on. If you forget, the status bar tells you.
-- Keep the tab in front during the export. Firefox captures what's on screen.
+- Click the extension's toolbar icon once on the PowerPoint page before exporting.
+- Keep the tab in front during the export.
 - Requires Firefox 140 or later.
 
 **Good to know:**
-- The export button hides itself while exporting, so it never ends up in a slide. Its **✕** hides it for that page.
+- The **✕** on the export button hides it for that page.
 - If an export stops partway, the slides done so far are still saved (e.g. `… (1-12 of 50).pdf`).
 - The "you don't have permission to edit" notice and the "Click to add…" placeholders are removed from the captures automatically.
-- In Arc, the window flashes on every slide (Arc only allows that capture mode).
-- Extensions that force-enable right-click / copy (e.g. *Absolute Enable Right Click & Copy*) slow PowerPoint for the web down a lot. Turn them off while exporting.
+- In Arc, the window flashes on every slide.
+- Extensions that force-enable right-click / copy (e.g. *Absolute Enable Right Click & Copy*) slow exports down a lot; turn them off while exporting.
 
 ## How it works
 
