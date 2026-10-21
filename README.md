@@ -14,6 +14,8 @@ A browser extension (Manifest V3) for files on OneDrive / SharePoint that you ca
 | PDF download | ✅ | ✅ | ✅ |
 | Slide export | ✅ | ✅ | ✅ (since 1.3.0) |
 
+![Exporting a view-only PowerPoint deck to PDF](./screenshots/demo-slide-export.gif)
+
 ## Why
 
 Files set to "preview only" have no download button, but their content still reaches the browser. Saving one used to mean finding the right request in DevTools, copying its URL and auth headers, and re-sending it by hand. The extension does this automatically and adds a download button to the page.
