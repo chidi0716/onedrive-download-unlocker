@@ -206,6 +206,23 @@
     return wrap.querySelectorAll("*").length + "/" + (wrap.textContent || "").length + "/" + imgs.length + "/" + loaded + "/" + pictures + "/" + loadingPictures(wrap);
   }
 
+  // The deck's file name: the `fileName` URL parameter (exact), else the
+  // viewer's title bar. Needed when the viewer is the top-level page (not
+  // inside SharePoint/OneDrive): the tab title is then just "PowerPoint". The
+  // title bar text ends with an icon-font glyph; sanitizeFilename drops it.
+  function documentName() {
+    try {
+      const f = new URL(location.href).searchParams.get("fileName");
+      if (f) return f;
+    } catch (e) { /* ignore */ }
+    for (const sel of ["#DocumentTitle", "#documentTitle"]) {
+      const el = document.querySelector(sel);
+      const s = el && (el.textContent || "").trim();
+      if (s) return s;
+    }
+    return "";
+  }
+
   // How many pictures in `wrap` are still showing the viewer's "loading"
   // placeholder. A picture is an SVG <image> whose href is the real JPEG/PNG
   // once loaded; until then it is a small (48-unit) centred "image" icon drawn
@@ -305,6 +322,7 @@
     wrapperHasContent,
     slideSignature,
     loadingPictures,
+    documentName,
     hideHints,
     dismissNotification,
   };

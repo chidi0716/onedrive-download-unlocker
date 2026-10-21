@@ -12,8 +12,9 @@
 #   - background.service_worker -> background.scripts
 #   - drop the `debugger` permission and the PowerPoint slide-export content
 #     script (Firefox has no debugger API, so no slide export there)
-#   - drop version_name (Chrome-only key)
-#   - add browser_specific_settings.gecko (add-on id, minimum Firefox version)
+#   - drop version_name (Chrome-only key); Firefox-specific description
+#   - add browser_specific_settings.gecko (add-on id, minimum Firefox 140,
+#     data_collection_permissions = none, which AMO requires for signing)
 #
 # Works in Windows PowerShell 5.1 and PowerShell 7+.
 # Usage:  powershell -ExecutionPolicy Bypass -File build.ps1
@@ -80,13 +81,18 @@ New-Zip $chromeStage (Join-Path $dist "$base-chrome.zip")
 # --- Firefox (manifest generated from manifest.json) ---
 $ff = ConvertFrom-Json $manifestText
 $ff.PSObject.Properties.Remove("version_name")
+# No slide export on Firefox, so do not advertise it (AMO limit: 250 chars).
+$ff.description = "Download preview-only OneDrive / SharePoint PDFs in one click, with the original filename."
 $ff.permissions = @($ff.permissions | Where-Object { $_ -ne "debugger" })
 $ff.background = [ordered]@{ scripts = @("background.js") }
 $ff.content_scripts = @($ff.content_scripts | Where-Object { $_.js -notcontains "slides.js" })
 $ff | Add-Member -NotePropertyName "browser_specific_settings" -NotePropertyValue ([ordered]@{
     gecko = [ordered]@{
         id = "onedrive-pdf-download-unlocker@chidi0716"
-        strict_min_version = "115.0"
+        strict_min_version = "140.0"
+        # Required by addons.mozilla.org for new add-ons (Firefox's built-in
+        # data consent). The extension sends nothing to its developer.
+        data_collection_permissions = [ordered]@{ required = @("none") }
     }
 })
 

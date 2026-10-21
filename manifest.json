@@ -3,7 +3,7 @@
   "name": "OneDrive / SharePoint PDF Download Unlocker",
   "version": "1.2.1",
   "version_name": "1.2.1",
-  "description": "Bypasses OneDrive/SharePoint's preview-only restriction: detects the network request that actually carries the file content and lets you download it with one click, with the original filename, into the default Downloads folder, via a floating button on the page.",
+  "description": "Download preview-only OneDrive / SharePoint PDFs in one click, and export view-only PowerPoint-for-web slides to PDF.",
   "permissions": [
     "webRequest",
     "webNavigation",

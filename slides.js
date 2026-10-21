@@ -324,10 +324,11 @@
 
   async function fileBase() {
     const r = await send({ type: "SLIDES_TAB_TITLE" });
-    const name = ((r && r.title) || document.title || "slides")
-      .replace(/\s*[-|–]\s*(PowerPoint|SharePoint|OneDrive).*$/i, "")
-      .replace(/\.pptx?$/i, "");
-    return U.sanitizeFilename(name) || "slides";
+    let name = ((r && r.title) || "").replace(/\s*[-|–]\s*(PowerPoint|SharePoint|OneDrive).*$/i, "").trim();
+    // Inside SharePoint/OneDrive the tab title carries the file name; when the
+    // viewer itself is the page it is just "PowerPoint", so ask the viewer.
+    if (!name || /^(PowerPoint|SharePoint|OneDrive)$/i.test(name)) name = V.documentName() || name || document.title;
+    return U.sanitizeFilename(name.replace(/\.pptx?$/i, "")) || "slides";
   }
 
   // Output presets the user picks in the popup. Each slide is rendered to `width`

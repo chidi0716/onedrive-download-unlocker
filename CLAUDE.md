@@ -16,6 +16,8 @@ Plain JavaScript, no build step, no dependencies, no tests in the repo. User-fac
 - Syntax check (the only automated check): `for f in *.js; do node --check "$f"; done`
 - Package: `pwsh build.ps1` (or `powershell -ExecutionPolicy Bypass -File build.ps1` on Windows) → `dist/onedrive-pdf-download-unlocker-<version>-chrome.zip` and `-firefox.zip`. `<version>` comes from `manifest.json`. `dist/` and zips are git-ignored; release zips are attached to GitHub Releases by hand.
 - Run in Chrome: `chrome://extensions` → Developer mode → Load unpacked → repo root. Firefox needs the built firefox zip (its manifest only exists inside it).
+- Validate the Firefox package the way addons.mozilla.org does: `npx addons-linter dist/onedrive-pdf-download-unlocker-<version>-firefox.zip` (must report 0 errors; the `debugger.*` / `innerHTML` warnings are known and harmless).
+- Sign for self-distribution (unlisted): unzip the firefox zip to a folder, then `npx web-ext sign --channel=unlisted --source-dir <folder> --api-key "$WEB_EXT_API_KEY" --api-secret "$WEB_EXT_API_SECRET"`. Credentials are the owner's AMO API keys and are never committed; each signed version number can only be used once.
 
 ## Architecture
 
@@ -27,7 +29,7 @@ Plain JavaScript, no build step, no dependencies, no tests in the repo. User-fac
 - `popup.js` / `popup.html` — candidate list, language switch, slide-export box with quality (`chrome.storage.local` keys `odpdf_lang`, `odpdf_slide_quality`).
 
 ### Firefox
-`manifest.json` is the single source. `build.ps1` generates the Firefox manifest (service worker → `background.scripts`, drops the `debugger` permission and the slide-export content-script entry, drops `version_name`, adds `browser_specific_settings.gecko`). There is no `manifest.firefox.json`. `chrome.debugger` usage in background.js is guarded because it does not exist on Firefox. Bump the version only in `manifest.json`.
+`manifest.json` is the single source. `build.ps1` generates the Firefox manifest (service worker → `background.scripts`, drops the `debugger` permission and the slide-export content-script entry, drops `version_name`, uses a Firefox-specific description, adds `browser_specific_settings.gecko` with `strict_min_version` 140 and `data_collection_permissions: none`, which AMO requires for signing). Keep `description` ≤132 chars (Chrome Web Store) — AMO rejects >250. There is no `manifest.firefox.json`. `chrome.debugger` usage in background.js is guarded because it does not exist on Firefox. Bump the version only in `manifest.json`.
 
 ### Slide export flow (messages)
 - Start: popup sends `SLIDES_RUN` to the tab, or `content.js` sends `SLIDES_START` → background relays `SLIDES_RUN` to all frames; only the ready viewer frame (slides.js) answers.

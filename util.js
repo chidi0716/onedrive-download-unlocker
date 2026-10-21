@@ -7,13 +7,17 @@
   // Filename rules that work on both Windows and macOS:
   // - replace Windows-reserved characters \ / : * ? " < > | (macOS allows them,
   //   but replacing them does no harm)
-  // - drop control characters
+  // - drop control, private-use and invisible format characters
   // - no trailing dots or spaces (Windows rejects them)
   // - cap the length so no OS path limit is hit
   function sanitizeFilename(name) {
     name = (name || "").trim();
     name = name.replace(/[\\/:*?"<>|]/g, "_");
     name = name.replace(/[\x00-\x1f\x7f]/g, "");
+    // Private-use characters (icon-font glyphs the viewer appends to titles,
+    // e.g. U+E972) and invisible format characters (zero-width, bidi marks)
+    // make Chrome reject the name and save the file as plain "download".
+    name = name.replace(/[\p{Co}\p{Cf}]/gu, "");
     name = name.replace(/[\s.]+$/g, "");
     if (name.length > 150) name = name.slice(0, 150).trim();
     return name;
