@@ -104,7 +104,7 @@ powershell -ExecutionPolicy Bypass -File build.ps1   # macOS／Linux：pwsh buil
 
 ## 測試
 
-- **投影片匯出**：在 macOS + Arc 上經多輪實測調校。1.2.1 起每個版本都用真實的 50 張 SharePoint 簡報（含圖片、表格、圖表、中日文）完整匯出並逐張檢查。1.3.0：Chromium 50/50 張，約 41 秒；Firefox 157 50/50 張，約 48 秒。另有對模擬檢視器的自動化測試，涵蓋頁內按鈕、取消、部分保存（25/25）。
+- **投影片匯出**：在 macOS + Arc 上經多輪實測調校。1.2.1 起每個版本都用真實的 50 張 SharePoint 簡報（含圖片、表格、圖表、中日文）完整匯出並逐張檢查。1.3.0：Chromium 50/50 張，約 41 秒；Firefox 157 50/50 張，約 47 秒。另有對模擬檢視器的自動化測試，涵蓋頁內按鈕、取消、部分保存（25/25）。
 - **大型檔案（issue #1）**：對需要 `X-SPOPacToken` 的模擬 SharePoint 伺服器測試 8 MB、70 MB、150 MB、400 MB，下載結果與原檔逐位元組相同。
 - **Firefox PDF 下載（issue #2）**：由提出需求的使用者確認可用。
 

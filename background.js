@@ -641,6 +641,7 @@ async function fxBeginSlideExport(tabId, frameId, frameUrl, withImages) {
       throw new Error(/activeTab|permission/i.test(String(e && e.message)) ? NEED_ACTIVE_TAB : String(e && e.message));
     }
   }
+  await fxInstallPageInput(tabId, frameId);
   slideExportByTab[tabId] = { offset, frameId, frameUrl, windowId: tab.windowId };
   return offset;
 }
@@ -673,48 +674,74 @@ async function fxCaptureSlide(tabId, rect, scale, jpeg, dpr) {
   return url.slice(url.indexOf(",") + 1); // base64 JPEG, like the CDP path
 }
 
+// Page-world input handler, installed once per viewer frame. slides.js fires an
+// "__odpdf_input" event (detail: the input as JSON) and this turns it into a
+// keydown/keyup with keyCode set, or a full pointer/mouse click. Going through
+// the page directly, instead of one scripting call per key, keeps each slide
+// switch as quick as with the debugger.
+function fxPageInputHelper(keyCodes) {
+  if (window.__odpdfInput) return;
+  window.__odpdfInput = true;
+  document.addEventListener("__odpdf_input", (ev) => {
+    let inp;
+    try { inp = JSON.parse(ev.detail); } catch (e) { return; }
+    if (inp.kind === "key") {
+      const keyCode = keyCodes[inp.key] || 0;
+      const mk = (type) => {
+        const e = new KeyboardEvent(type, { key: inp.key, code: inp.key, bubbles: true, cancelable: true });
+        Object.defineProperty(e, "keyCode", { get: () => keyCode });
+        Object.defineProperty(e, "which", { get: () => keyCode });
+        return e;
+      };
+      const t = document.activeElement || document.body;
+      t.dispatchEvent(mk("keydown"));
+      t.dispatchEvent(mk("keyup"));
+    } else if (inp.kind === "click") {
+      const el = document.elementFromPoint(inp.x, inp.y);
+      if (!el) return;
+      const o = { bubbles: true, cancelable: true, clientX: inp.x, clientY: inp.y, button: 0, buttons: 1, view: window, pointerId: 1, pointerType: "mouse", isPrimary: true };
+      for (const [type, C] of [["pointerdown", PointerEvent], ["mousedown", MouseEvent], ["pointerup", PointerEvent], ["mouseup", MouseEvent], ["click", MouseEvent]]) {
+        el.dispatchEvent(new C(type, o));
+      }
+    }
+  });
+  document.documentElement.setAttribute("data-odpdf-input", "1");
+}
+
+function fxInstallPageInput(tabId, frameId) {
+  return chrome.scripting.executeScript({
+    target: { tabId, frameIds: [frameId] },
+    world: "MAIN", // keyCode must be visible to the page's own handlers
+    args: [KEY_CODES],
+    func: fxPageInputHelper,
+  });
+}
+
+// Fallback when slides.js finds no handler in its frame (e.g. the frame was
+// reloaded): reinstall it and fire the input from here.
 async function fxSlideInput(tabId, input) {
   const st = slideExportByTab[tabId];
   if (!st) throw noSessionError(tabId);
   if (input.kind === "move") return; // a synthetic move can't move the real pointer; nothing to do
-  const code = KEY_CODES[input.key];
-  if (input.kind === "key" && !code) throw new Error("unsupported key " + input.key);
+  if (input.kind === "key" && !KEY_CODES[input.key]) throw new Error("unsupported key " + input.key);
+  await fxInstallPageInput(tabId, st.frameId);
   await chrome.scripting.executeScript({
     target: { tabId, frameIds: [st.frameId] },
-    world: "MAIN", // keyCode must be visible to the page's own handlers
-    args: [input, code || 0],
-    func: (inp, keyCode) => {
-      if (inp.kind === "key") {
-        const mk = (type) => {
-          const e = new KeyboardEvent(type, { key: inp.key, code: inp.key, bubbles: true, cancelable: true });
-          Object.defineProperty(e, "keyCode", { get: () => keyCode });
-          Object.defineProperty(e, "which", { get: () => keyCode });
-          return e;
-        };
-        const t = document.activeElement || document.body;
-        t.dispatchEvent(mk("keydown"));
-        t.dispatchEvent(mk("keyup"));
-      } else if (inp.kind === "click") {
-        const el = document.elementFromPoint(inp.x, inp.y);
-        if (!el) return;
-        const o = { bubbles: true, cancelable: true, clientX: inp.x, clientY: inp.y, button: 0, buttons: 1, view: window, pointerId: 1, pointerType: "mouse", isPrimary: true };
-        for (const [type, C] of [["pointerdown", PointerEvent], ["mousedown", MouseEvent], ["pointerup", PointerEvent], ["mouseup", MouseEvent], ["click", MouseEvent]]) {
-          el.dispatchEvent(new C(type, o));
-        }
-      }
-    },
+    world: "MAIN",
+    args: [JSON.stringify(input)],
+    func: (detail) => document.dispatchEvent(new CustomEvent("__odpdf_input", { detail })),
   });
 }
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg && msg.type === "SLIDES_BEGIN") {
-    // `upscale`: whether captures may exceed the display's native resolution
-    // (Firefox re-renders at any scale; CDP returned bad data above native).
+    // `backend`: "cdp" (debugger) or "tab" (Firefox: captureVisibleTab, which
+    // re-renders at any scale, plus the page-world input handler).
     const begin = USE_CDP
       ? beginSlideExport(sender.tab.id, sender.frameId, sender.url)
       : fxBeginSlideExport(sender.tab.id, sender.frameId, sender.url, msg.withImages !== false);
     begin
-      .then((offset) => sendResponse({ ok: true, offset, upscale: !USE_CDP }))
+      .then((offset) => sendResponse({ ok: true, offset, backend: USE_CDP ? "cdp" : "tab" }))
       .catch((e) => sendResponse({ ok: false, error: e.message }));
     return true;
   }

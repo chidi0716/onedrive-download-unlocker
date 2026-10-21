@@ -79,8 +79,20 @@
     }));
   }
 
+  // "cdp" (Chrome / Edge debugger) or "tab" (Firefox), from SLIDES_BEGIN.
+  let backend = "cdp";
+
   // Trusted (debugger) input; throws if the capture session was cancelled.
+  // Firefox: handled in-frame by the page-world handler the background
+  // installed (fxPageInputHelper); the pointer can't be moved there.
   async function input(inp) {
+    if (backend === "tab") {
+      if (inp.kind === "move") return { ok: true };
+      if (document.documentElement.hasAttribute("data-odpdf-input")) {
+        document.dispatchEvent(new CustomEvent("__odpdf_input", { detail: JSON.stringify(inp) }));
+        return { ok: true };
+      }
+    }
     const r = await send({ type: "SLIDES_INPUT", input: inp });
     if (r && !r.ok && r.error === CANCELLED) throw cancelledError();
     return r;
@@ -369,6 +381,7 @@
       const r = box.rect;
       // devicePixelRatio: the debugger screenshot renders at the display's
       // DPR, so divide it out to keep the output at outputWidth.
+      const shotAt = performance.now();
       const res = await send({ type: "SLIDES_CAPTURE", rect: { x: r.left, y: r.top, width: r.width, height: r.height }, scale: outputWidth / r.width / (window.devicePixelRatio || 1), dpr: window.devicePixelRatio || 1, jpeg });
       if (!res || !res.ok) {
         if (res && res.error === CANCELLED) throw cancelledError();
@@ -401,7 +414,8 @@
       if (prev) reshots++;
       prev = moved ? null : b;
       last = b;
-      await sleep(TIMING.verifyGapMs);
+      // Firefox: a shot alone takes longer than the gap, so count it in.
+      await sleep(backend === "tab" ? TIMING.verifyGapMs - (performance.now() - shotAt) : TIMING.verifyGapMs);
     }
     if (!last) throw new Error("slide " + slideNo + ": capture was not a valid image");
     return last; // never settled (e.g. an animated picture): keep the latest shot
@@ -437,6 +451,7 @@
       if (begin && begin.error === NEED_ACTIVE_TAB) throw messageError(tr("slidesNeedActiveTab"));
       throw new Error((begin && begin.error) || "could not start capture");
     }
+    backend = begin.backend || "cdp";
     let failure = null;
     try {
       // With CDP the background has already waited for the "is debugging" bar
@@ -448,8 +463,8 @@
         // slide. Asking the CDP screenshot for more pixels than the display has
         // (a high preset in a small window) makes it upscale, which some
         // browsers answer with empty/invalid data. Firefox re-renders the slide
-        // at the requested scale instead (begin.upscale), so no clamp there.
-        if (!begin.upscale) {
+        // at the requested scale instead, so no clamp there.
+        if (backend !== "tab") {
           const b0 = V.currentSlideBox();
           const native = b0 ? Math.floor(b0.rect.width * (window.devicePixelRatio || 1)) : 0;
           if (native > 400 && native < outputWidth) outputWidth = native;

@@ -104,7 +104,7 @@ This writes `dist/onedrive-download-unlocker-<version>-chrome.zip` and `-firefox
 
 ## Testing
 
-- **Slide export:** tuned over many rounds on macOS + Arc. Since 1.2.1, each release is checked on a real 50-slide SharePoint deck (pictures, tables, charts, CJK text), with every slide inspected. For 1.3.0: Chromium 50/50 slides in about 41 s, Firefox 157 50/50 slides in about 48 s. An automated test against a mock viewer covers the on-page button, cancelling, and partial saves (25/25).
+- **Slide export:** tuned over many rounds on macOS + Arc. Since 1.2.1, each release is checked on a real 50-slide SharePoint deck (pictures, tables, charts, CJK text), with every slide inspected. For 1.3.0: Chromium 50/50 slides in about 41 s, Firefox 157 50/50 slides in about 47 s. An automated test against a mock viewer covers the on-page button, cancelling, and partial saves (25/25).
 - **Large files (issue #1):** byte-for-byte identical downloads at 8 MB, 70 MB, 150 MB and 400 MB against a mock SharePoint server that requires `X-SPOPacToken`.
 - **Firefox PDF download (issue #2):** confirmed by the user who requested it.
 
