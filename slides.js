@@ -81,6 +81,10 @@
 
   // "cdp" (Chrome / Edge debugger) or "tab" (Firefox), from SLIDES_BEGIN.
   let backend = "cdp";
+  // Top-page offset of this frame (CSS px), from SLIDES_BEGIN.
+  let captureOffset = { x: 0, y: 0 };
+  // Chrome / Edge fallback to clipped debugger shots (see cropShot).
+  let clipShots = false;
 
   // Trusted (debugger) input; throws if the capture session was cancelled.
   // Firefox: handled in-frame by the page-world handler the background
@@ -372,6 +376,36 @@
     for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
     return true;
   };
+  // Chrome / Edge: the background sends the whole tab (see captureSlide).
+  // Cut the slide out of it at outputWidth. Returns empty bytes for a shot
+  // that doesn't decode (the caller treats it as a bad capture) and null when
+  // the shot doesn't cover the slide.
+  async function cropShot(bytes, r, outputWidth, jpeg) {
+    let bmp;
+    try {
+      bmp = await createImageBitmap(new Blob([bytes], { type: "image/jpeg" }));
+    } catch (e) {
+      return new Uint8Array(0);
+    }
+    // Shot pixels per CSS px, measured rather than assumed from
+    // devicePixelRatio (the two differ under device emulation, for one).
+    const topWidth = captureOffset.vw || (window === window.top ? window.innerWidth : 0);
+    const dpr = topWidth ? bmp.width / topWidth : window.devicePixelRatio || 1;
+    const sx = (captureOffset.x + r.left) * dpr, sy = (captureOffset.y + r.top) * dpr, sw = r.width * dpr, sh = r.height * dpr;
+    if (sx < -2 || sy < -2 || sx + sw > bmp.width + 2 || sy + sh > bmp.height + 2) {
+      bmp.close();
+      return null;
+    }
+    const w = Math.round(outputWidth), h = Math.round((r.height / r.width) * outputWidth);
+    const canvas = new OffscreenCanvas(w, h);
+    const ctx = canvas.getContext("2d");
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(bmp, sx, sy, sw, sh, 0, 0, w, h);
+    bmp.close();
+    const out = await canvas.convertToBlob({ type: "image/jpeg", quality: jpeg / 100 });
+    return new Uint8Array(await out.arrayBuffer());
+  }
+
   async function captureCurrent(slideNo, outputWidth, jpeg) {
     let prev = null, last = null, pictureWaited = false;
     for (let attempt = 0; attempt < TIMING.captureTries; attempt++) {
@@ -379,15 +413,22 @@
       if (!box || box.method === "derived") box = await settledSlideBox();
       if (!box) throw new Error("slide " + slideNo + " not found on screen");
       const r = box.rect;
-      // devicePixelRatio: the debugger screenshot renders at the display's
-      // DPR, so divide it out to keep the output at outputWidth.
+      // rect/scale/dpr are for Firefox, which captures just this area at this
+      // scale; Chrome / Edge send the whole tab and cropShot cuts it out.
       const shotAt = performance.now();
-      const res = await send({ type: "SLIDES_CAPTURE", rect: { x: r.left, y: r.top, width: r.width, height: r.height }, scale: outputWidth / r.width / (window.devicePixelRatio || 1), dpr: window.devicePixelRatio || 1, jpeg });
+      const res = await send({ type: "SLIDES_CAPTURE", clip: clipShots, rect: { x: r.left, y: r.top, width: r.width, height: r.height }, scale: outputWidth / r.width / (window.devicePixelRatio || 1), dpr: window.devicePixelRatio || 1, jpeg });
       if (!res || !res.ok) {
         if (res && res.error === CANCELLED) throw cancelledError();
         throw new Error((res && res.error) || "capture failed");
       }
-      const b = U.base64ToBytes(res.data);
+      let b = U.base64ToBytes(res.data);
+      if (backend === "cdp" && !clipShots) {
+        b = await cropShot(b, r, outputWidth, jpeg);
+        if (b === null) {
+          clipShots = true; // the full shot doesn't cover the slide; let the debugger clip from now on
+          continue;
+        }
+      }
       // Guard against a bad capture (the first shot of an export has
       // occasionally come back not-a-JPEG): only accept real JPEG bytes,
       // otherwise re-shoot this slide rather than poison the PDF.
@@ -452,6 +493,8 @@
       throw new Error((begin && begin.error) || "could not start capture");
     }
     backend = begin.backend || "cdp";
+    captureOffset = begin.offset || { x: 0, y: 0 };
+    clipShots = false;
     let failure = null;
     try {
       // With CDP the background has already waited for the "is debugging" bar
@@ -460,10 +503,9 @@
       let toastCleared = !withImages;
       if (withImages) {
         // Clamp the target width to the display's native resolution for the
-        // slide. Asking the CDP screenshot for more pixels than the display has
-        // (a high preset in a small window) makes it upscale, which some
-        // browsers answer with empty/invalid data. Firefox re-renders the slide
-        // at the requested scale instead, so no clamp there.
+        // slide: the debugger shot holds only the pixels on screen, so a wider
+        // output would just be upscaled. Firefox re-renders the slide at the
+        // requested scale instead, so no clamp there.
         if (backend !== "tab") {
           const b0 = V.currentSlideBox();
           const native = b0 ? Math.floor(b0.rect.width * (window.devicePixelRatio || 1)) : 0;

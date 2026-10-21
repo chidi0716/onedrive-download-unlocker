@@ -466,15 +466,15 @@ async function computeOffset(tabId) {
       frames.find((f) => /^WacFrame_/i.test(f.id || f.name || "")) ||
       frames.map((f) => [f, f.getBoundingClientRect()]).filter(([, b]) => b.width > 0 && b.height > 0)
         .sort((a, b) => b[1].width * b[1].height - a[1].width * a[1].height).map(([f]) => f)[0];
-    if (!pick) return { x: 0, y: 0 };
+    if (!pick) return { x: 0, y: 0, vw };
     const b = pick.getBoundingClientRect();
     const cs = getComputedStyle(pick);
     const x = b.x + parseFloat(cs.borderLeftWidth) + parseFloat(cs.paddingLeft);
     const y = b.y + parseFloat(cs.borderTopWidth) + parseFloat(cs.paddingTop);
     // The viewer fills the viewport; a large offset means we found the wrong
     // element, so ignore it. Only a small inset (a header bar) is trusted.
-    if (Math.abs(x) > vw * 0.2 || y < -1 || y > vh * 0.2) return { x: 0, y: 0 };
-    return { x, y };
+    if (Math.abs(x) > vw * 0.2 || y < -1 || y > vh * 0.2) return { x: 0, y: 0, vw };
+    return { x, y, vw }; // vw: top viewport width (CSS px), to scale the full-tab shot
   })()`;
   const res = await cdp(tabId, "Runtime.evaluate", { expression: expr, returnByValue: true });
   return (res && res.result && res.result.value) || { x: 0, y: 0 };
@@ -521,12 +521,23 @@ async function beginSlideExport(tabId, frameId, frameUrl) {
   return offset;
 }
 
-async function captureSlide(tabId, rect, scale, jpeg) {
+// Shoots the whole tab as it is on screen; slides.js crops and resizes the
+// slide out of it. A `clip` (and its scale) makes Chromium zoom the live page
+// onto that area for the duration of the shot, which shows as a flash on every
+// slide in Chrome / Edge, so no clip is passed.
+const FULL_SHOT_QUALITY = 95; // re-encoded at the chosen quality after cropping
+
+// `clip` (rect + scale) is the fallback for when the full shot doesn't cover
+// the slide (seen under device emulation): correct, but it flashes.
+async function captureSlide(tabId, clip, jpeg) {
   const st = slideExportByTab[tabId];
   if (!st) throw noSessionError(tabId);
-  const quality = jpeg >= 1 && jpeg <= 100 ? jpeg : 80;
-  const clip = { x: st.offset.x + rect.x, y: st.offset.y + rect.y, width: rect.width, height: rect.height, scale: scale || 1 };
-  const shot = (fromSurface) => cdp(tabId, "Page.captureScreenshot", { format: "jpeg", quality, fromSurface, captureBeyondViewport: false, clip });
+  const params = { format: "jpeg", quality: FULL_SHOT_QUALITY, captureBeyondViewport: false };
+  if (clip) {
+    params.quality = jpeg >= 1 && jpeg <= 100 ? jpeg : 80;
+    params.clip = { x: st.offset.x + clip.rect.x, y: st.offset.y + clip.rect.y, width: clip.rect.width, height: clip.rect.height, scale: clip.scale || 1 };
+  }
+  const shot = (fromSurface) => cdp(tabId, "Page.captureScreenshot", { ...params, fromSurface });
   // Prefer fromSurface:false — it grabs the pixels straight from the renderer
   // instead of the OS window surface, which avoids the per-slide fullscreen
   // flash some browsers (Arc) show when routing through the surface. But not
@@ -746,7 +757,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
   if (msg && msg.type === "SLIDES_CAPTURE") {
-    (USE_CDP ? captureSlide(sender.tab.id, msg.rect, msg.scale, msg.jpeg) : fxCaptureSlide(sender.tab.id, msg.rect, msg.scale, msg.jpeg, msg.dpr))
+    (USE_CDP ? captureSlide(sender.tab.id, msg.clip ? { rect: msg.rect, scale: msg.scale } : null, msg.jpeg) : fxCaptureSlide(sender.tab.id, msg.rect, msg.scale, msg.jpeg, msg.dpr))
       .then((data) => sendResponse({ ok: true, data }))
       .catch(async (e) => sendResponse({ ok: false, error: await slideErrorText(sender.tab.id, e) }));
     return true;
