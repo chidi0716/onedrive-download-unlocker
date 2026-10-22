@@ -51,7 +51,9 @@ Temporary add-ons are removed when Firefox restarts; load it again after each re
 ### Download a PDF
 
 1. Open the PDF preview page on OneDrive / SharePoint.
-2. Click the **Download PDF** button that appears on the page. The file goes to your Downloads folder.
+2. Click the **Download** button that appears on the page. The file goes to your Downloads folder.
+
+![Downloading a preview-only PDF](./screenshots/demo-pdf-download.gif)
 
 No button? Reload the page, or open the popup and click **Rescan**.
 

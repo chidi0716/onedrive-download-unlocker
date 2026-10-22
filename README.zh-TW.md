@@ -51,7 +51,9 @@ Chrome／Edge 會要求確認 `debugger` 權限（用於擷取投影片）。更
 ### 下載 PDF
 
 1. 開啟 OneDrive / SharePoint 的 PDF 預覽頁面。
-2. 點頁面上出現的「下載 PDF」按鈕，檔案會存到「下載」資料夾。
+2. 點頁面上出現的「下載」按鈕，檔案會存到「下載」資料夾。
+
+![下載只能預覽的 PDF](./screenshots/demo-pdf-download.gif)
 
 沒看到按鈕的話，重新整理頁面，或打開彈出視窗按「重新掃描」。
 
