@@ -171,7 +171,7 @@
     const domName = domFilenameGuess();
     if (domName) {
       let name = sanitizeFilename(domName);
-      name = name.replace(/\s*[-|–]\s*(OneDrive|SharePoint).*$/i, "");
+      name = name.replace(TITLE_SUFFIX, "");
       return ensurePdfExt(name);
     }
 
@@ -183,7 +183,7 @@
     }
 
     let name = (document.title || "document").trim();
-    name = name.replace(/\s*[-|–]\s*(OneDrive|SharePoint).*$/i, "");
+    name = name.replace(TITLE_SUFFIX, "");
     name = sanitizeFilename(name);
     return ensurePdfExt(name);
   }

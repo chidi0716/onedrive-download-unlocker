@@ -466,15 +466,15 @@ async function computeOffset(tabId) {
       frames.find((f) => /^WacFrame_/i.test(f.id || f.name || "")) ||
       frames.map((f) => [f, f.getBoundingClientRect()]).filter(([, b]) => b.width > 0 && b.height > 0)
         .sort((a, b) => b[1].width * b[1].height - a[1].width * a[1].height).map(([f]) => f)[0];
-    if (!pick) return { x: 0, y: 0, vw };
+    if (!pick) return { x: 0, y: 0 };
     const b = pick.getBoundingClientRect();
     const cs = getComputedStyle(pick);
     const x = b.x + parseFloat(cs.borderLeftWidth) + parseFloat(cs.paddingLeft);
     const y = b.y + parseFloat(cs.borderTopWidth) + parseFloat(cs.paddingTop);
     // The viewer fills the viewport; a large offset means we found the wrong
     // element, so ignore it. Only a small inset (a header bar) is trusted.
-    if (Math.abs(x) > vw * 0.2 || y < -1 || y > vh * 0.2) return { x: 0, y: 0, vw };
-    return { x, y, vw }; // vw: top viewport width (CSS px), to scale the full-tab shot
+    if (Math.abs(x) > vw * 0.2 || y < -1 || y > vh * 0.2) return { x: 0, y: 0 };
+    return { x, y };
   })()`;
   const res = await cdp(tabId, "Runtime.evaluate", { expression: expr, returnByValue: true });
   return (res && res.result && res.result.value) || { x: 0, y: 0 };
@@ -511,6 +511,11 @@ async function beginSlideExport(tabId, frameId, frameUrl) {
   await new Promise((r) => setTimeout(r, 700));
   const offset = await computeOffset(tabId);
   slideExportByTab[tabId].offset = offset;
+  // Top viewport width in CSS px: the full-tab shot's width over this is its
+  // pixels per CSS px, used to cut the slide out (captureSlide).
+  const metrics = await cdp(tabId, "Page.getLayoutMetrics", {});
+  slideExportByTab[tabId].viewportWidth = metrics.cssLayoutViewport.clientWidth;
+  slideExportByTab[tabId].clipShots = false;
   // NOTE: we deliberately do NOT hide the SharePoint chrome ("isolation").
   // Every capture is clipped to the slide's own rectangle, so the ribbon,
   // thumbnail rail and status bar are never in the image regardless. Hiding
@@ -521,34 +526,65 @@ async function beginSlideExport(tabId, frameId, frameUrl) {
   return offset;
 }
 
-// Shoots the whole tab as it is on screen; slides.js crops and resizes the
-// slide out of it. A `clip` (and its scale) makes Chromium zoom the live page
-// onto that area for the duration of the shot, which shows as a flash on every
-// slide in Chrome / Edge, so no clip is passed.
+// Shoots the whole tab as it is on screen and cuts the slide out of it here.
+// A `clip` makes Chromium zoom the live page onto that area for the duration
+// of the shot, which shows as a flash on every slide in Chrome / Edge, so a
+// clipped shot is only the fallback for a full shot that doesn't cover the
+// slide (seen under device emulation). Returns a base64 JPEG outputWidth wide.
 const FULL_SHOT_QUALITY = 95; // re-encoded at the chosen quality after cropping
 
-// `clip` (rect + scale) is the fallback for when the full shot doesn't cover
-// the slide (seen under device emulation): correct, but it flashes.
-async function captureSlide(tabId, clip, jpeg) {
+async function captureSlide(tabId, rect, outputWidth, jpeg) {
   const st = slideExportByTab[tabId];
   if (!st) throw noSessionError(tabId);
-  const params = { format: "jpeg", quality: FULL_SHOT_QUALITY, captureBeyondViewport: false };
-  if (clip) {
-    params.quality = jpeg >= 1 && jpeg <= 100 ? jpeg : 80;
-    params.clip = { x: st.offset.x + clip.rect.x, y: st.offset.y + clip.rect.y, width: clip.rect.width, height: clip.rect.height, scale: clip.scale || 1 };
+  const quality = jpeg >= 1 && jpeg <= 100 ? jpeg : 80;
+  const area = { x: st.offset.x + rect.x, y: st.offset.y + rect.y, width: rect.width, height: rect.height };
+  if (!st.clipShots) {
+    const full = await screenshot(tabId, { format: "jpeg", quality: FULL_SHOT_QUALITY, captureBeyondViewport: false });
+    const cut = await cropShot(st, full, area, outputWidth, quality);
+    if (cut !== null) return cut;
+    st.clipShots = true; // for the rest of this export
   }
+  const clip = { ...area, scale: outputWidth / rect.width / (st.shotScale || 1) };
+  return screenshot(tabId, { format: "jpeg", quality, captureBeyondViewport: false, clip });
+}
+
+// Cut `area` (top-page CSS px) out of a full-tab shot at outputWidth. Returns
+// "" for a shot that doesn't decode (the caller re-shoots) and null when the
+// shot doesn't cover the area.
+async function cropShot(st, b64, area, outputWidth, quality) {
+  let bmp;
+  try {
+    bmp = await createImageBitmap(await (await fetch("data:image/jpeg;base64," + b64)).blob());
+  } catch (e) {
+    return "";
+  }
+  const k = (st.shotScale = bmp.width / st.viewportWidth); // shot px per CSS px
+  const sx = area.x * k, sy = area.y * k, sw = area.width * k, sh = area.height * k;
+  if (sx < -2 || sy < -2 || sx + sw > bmp.width + 2 || sy + sh > bmp.height + 2) {
+    bmp.close();
+    return null;
+  }
+  const w = Math.round(outputWidth), h = Math.round((area.height / area.width) * outputWidth);
+  const canvas = new OffscreenCanvas(w, h);
+  const ctx = canvas.getContext("2d");
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(bmp, sx, sy, sw, sh, 0, 0, w, h);
+  bmp.close();
+  const out = await canvas.convertToBlob({ type: "image/jpeg", quality: quality / 100 });
+  return uint8ToBase64(new Uint8Array(await out.arrayBuffer()));
+}
+
+// Page.captureScreenshot, preferring fromSurface:false — it grabs the pixels
+// straight from the renderer instead of the OS window surface, which avoids
+// the per-slide fullscreen flash some browsers (Arc) show when routing through
+// the surface. Not every browser honours it (Arc rejects it: "Only screenshots
+// from surface are allowed"), so that is detected ONCE per export and surface
+// capture is used for the rest — retrying the rejected mode on every slide
+// wastes time and, on the first slide, has come back as invalid data.
+async function screenshot(tabId, params) {
+  const st = slideExportByTab[tabId];
   const shot = (fromSurface) => cdp(tabId, "Page.captureScreenshot", { ...params, fromSurface });
-  // Prefer fromSurface:false — it grabs the pixels straight from the renderer
-  // instead of the OS window surface, which avoids the per-slide fullscreen
-  // flash some browsers (Arc) show when routing through the surface. But not
-  // every browser honours it (Arc rejects it: "Only screenshots from surface
-  // are allowed"). Detect that ONCE per export and use surface capture for the
-  // rest — retrying the rejected mode on every slide wastes time and, on the
-  // first slide, has come back as invalid data.
-  if (st.surfaceOnly) {
-    const res = await shot(true);
-    return res.data;
-  }
+  if (st.surfaceOnly) return (await shot(true)).data;
   const first = shot(false);
   try {
     const res = await Promise.race([
@@ -562,8 +598,7 @@ async function captureSlide(tabId, clip, jpeg) {
     // another, so two screenshots of the tab never run at once.
     await Promise.race([first.catch(() => {}), new Promise((r) => setTimeout(r, 2000))]);
     if (!slideExportByTab[tabId]) throw noSessionError(tabId);
-    const res = await shot(true);
-    return res.data;
+    return (await shot(true)).data;
   }
 }
 
@@ -669,18 +704,17 @@ async function fxWaitTabInFront(tabId) {
   throw new Error("the PowerPoint tab stayed in the background");
 }
 
-async function fxCaptureSlide(tabId, rect, scale, jpeg, dpr) {
+async function fxCaptureSlide(tabId, rect, outputWidth, jpeg) {
   const st = slideExportByTab[tabId];
   if (!st) throw noSessionError(tabId);
   await fxWaitTabInFront(tabId);
   const quality = jpeg >= 1 && jpeg <= 100 ? jpeg : 80;
-  // slides.js divides its scale by devicePixelRatio for CDP; Firefox's scale
-  // is device pixels per CSS pixel already, so undo that.
+  // `scale` is output pixels per CSS px; Firefox re-renders the area at it.
   const url = await chrome.tabs.captureVisibleTab(st.windowId, {
     format: "jpeg",
     quality,
     rect: { x: st.offset.x + rect.x, y: st.offset.y + rect.y, width: rect.width, height: rect.height },
-    scale: (scale || 1) * (dpr || 1),
+    scale: outputWidth / rect.width,
   });
   return url.slice(url.indexOf(",") + 1); // base64 JPEG, like the CDP path
 }
@@ -757,7 +791,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
   if (msg && msg.type === "SLIDES_CAPTURE") {
-    (USE_CDP ? captureSlide(sender.tab.id, msg.clip ? { rect: msg.rect, scale: msg.scale } : null, msg.jpeg) : fxCaptureSlide(sender.tab.id, msg.rect, msg.scale, msg.jpeg, msg.dpr))
+    (USE_CDP ? captureSlide : fxCaptureSlide)(sender.tab.id, msg.rect, msg.outputWidth, msg.jpeg)
       .then((data) => sendResponse({ ok: true, data }))
       .catch(async (e) => sendResponse({ ok: false, error: await slideErrorText(sender.tab.id, e) }));
     return true;

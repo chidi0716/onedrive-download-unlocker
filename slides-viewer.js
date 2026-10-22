@@ -247,7 +247,7 @@
   // text meanwhile, so check it on its own. Seen on a real deck: two slides
   // of 50 were captured as just this icon.
   function slideBlocked() {
-    const el = document.getElementById("SlideBlockingIndicator") || document.querySelector(".SlideShimmer");
+    const el = document.getElementById("SlideBlockingIndicator") || document.getElementsByClassName("SlideShimmer")[0];
     if (!el) return false;
     const b = el.getBoundingClientRect();
     if (b.width < 20 || b.height < 20) return false;

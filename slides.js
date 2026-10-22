@@ -81,10 +81,6 @@
 
   // "cdp" (Chrome / Edge debugger) or "tab" (Firefox), from SLIDES_BEGIN.
   let backend = "cdp";
-  // Top-page offset of this frame (CSS px), from SLIDES_BEGIN.
-  let captureOffset = { x: 0, y: 0 };
-  // Chrome / Edge fallback to clipped debugger shots (see cropShot).
-  let clipShots = false;
 
   // Trusted (debugger) input; throws if the capture session was cancelled.
   // Firefox: handled in-frame by the page-world handler the background
@@ -377,34 +373,10 @@
     for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
     return true;
   };
-  // Chrome / Edge: the background sends the whole tab (see captureSlide).
-  // Cut the slide out of it at outputWidth. Returns empty bytes for a shot
-  // that doesn't decode (the caller treats it as a bad capture) and null when
-  // the shot doesn't cover the slide.
-  async function cropShot(bytes, r, outputWidth, jpeg) {
-    let bmp;
-    try {
-      bmp = await createImageBitmap(new Blob([bytes], { type: "image/jpeg" }));
-    } catch (e) {
-      return new Uint8Array(0);
-    }
-    // Shot pixels per CSS px, measured rather than assumed from
-    // devicePixelRatio (the two differ under device emulation, for one).
-    const topWidth = captureOffset.vw || (window === window.top ? window.innerWidth : 0);
-    const dpr = topWidth ? bmp.width / topWidth : window.devicePixelRatio || 1;
-    const sx = (captureOffset.x + r.left) * dpr, sy = (captureOffset.y + r.top) * dpr, sw = r.width * dpr, sh = r.height * dpr;
-    if (sx < -2 || sy < -2 || sx + sw > bmp.width + 2 || sy + sh > bmp.height + 2) {
-      bmp.close();
-      return null;
-    }
-    const w = Math.round(outputWidth), h = Math.round((r.height / r.width) * outputWidth);
-    const canvas = new OffscreenCanvas(w, h);
-    const ctx = canvas.getContext("2d");
-    ctx.imageSmoothingQuality = "high";
-    ctx.drawImage(bmp, sx, sy, sw, sh, 0, 0, w, h);
-    bmp.close();
-    const out = await canvas.convertToBlob({ type: "image/jpeg", quality: jpeg / 100 });
-    return new Uint8Array(await out.arrayBuffer());
+  // Poll until busy() turns false or maxMs passes.
+  async function waitWhile(busy, maxMs) {
+    const t = performance.now();
+    while (performance.now() - t < maxMs && busy()) await sleep(TIMING.slidePollMs);
   }
 
   async function captureCurrent(slideNo, outputWidth, jpeg) {
@@ -414,22 +386,14 @@
       if (!box || box.method === "derived") box = await settledSlideBox();
       if (!box) throw new Error("slide " + slideNo + " not found on screen");
       const r = box.rect;
-      // rect/scale/dpr are for Firefox, which captures just this area at this
-      // scale; Chrome / Edge send the whole tab and cropShot cuts it out.
+      // The background returns the slide alone, outputWidth wide.
       const shotAt = performance.now();
-      const res = await send({ type: "SLIDES_CAPTURE", clip: clipShots, rect: { x: r.left, y: r.top, width: r.width, height: r.height }, scale: outputWidth / r.width / (window.devicePixelRatio || 1), dpr: window.devicePixelRatio || 1, jpeg });
+      const res = await send({ type: "SLIDES_CAPTURE", rect: { x: r.left, y: r.top, width: r.width, height: r.height }, outputWidth, jpeg });
       if (!res || !res.ok) {
         if (res && res.error === CANCELLED) throw cancelledError();
         throw new Error((res && res.error) || "capture failed");
       }
-      let b = U.base64ToBytes(res.data);
-      if (backend === "cdp" && !clipShots) {
-        b = await cropShot(b, r, outputWidth, jpeg);
-        if (b === null) {
-          clipShots = true; // the full shot doesn't cover the slide; let the debugger clip from now on
-          continue;
-        }
-      }
+      const b = U.base64ToBytes(res.data);
       // Guard against a bad capture (the first shot of an export has
       // occasionally come back not-a-JPEG): only accept real JPEG bytes,
       // otherwise re-shoot this slide rather than poison the PDF.
@@ -439,26 +403,23 @@
       }
       const after = V.currentSlideBox();
       const moved = !(after && sameRect(after.rect, r));
-      // A picture that only started loading after the slide looked finished
-      // shows a grey "loading" box in a shot that is otherwise stable. Wait for
-      // it to swap in, then shoot again.
-      // The slide went back behind the "not rendered yet" overlay (or never
-      // left it): wait for it to clear, then shoot again.
-      if (V.slideBlocked() && !blockWaited) {
-        blockWaited = true;
-        const t = performance.now();
-        while (performance.now() - t < TIMING.slideReadyMaxMs && V.slideBlocked()) await sleep(TIMING.slidePollMs);
-        await sleep(TIMING.slideFloorMs);
-        prev = null;
-        last = b;
-        continue;
-      }
+      // Something was still loading when the shot was taken: wait for it
+      // (once per slide each), then shoot again.
+      // - The slide went back behind the "not rendered yet" overlay.
+      // - A picture that only started loading after the slide looked finished
+      //   shows its grey "loading" box; one that never loads is kept as is.
       const wrap = V.visibleWrapper();
-      if (wrap && !pictureWaited && V.loadingPictures(wrap) > 0) {
-        pictureWaited = true; // at most one wait per slide; a picture that never loads is kept as is
-        const t = performance.now();
-        while (performance.now() - t < TIMING.pictureWaitMs && V.loadingPictures(wrap) > 0) await sleep(TIMING.slidePollMs);
+      let waited = false;
+      if (!blockWaited && V.slideBlocked()) {
+        blockWaited = waited = true;
+        await waitWhile(V.slideBlocked, TIMING.slideReadyMaxMs);
+        await sleep(TIMING.slideFloorMs);
+      } else if (wrap && !pictureWaited && V.loadingPictures(wrap) > 0) {
+        pictureWaited = waited = true;
+        await waitWhile(() => V.loadingPictures(wrap) > 0, TIMING.pictureWaitMs);
         await nextFrame();
+      }
+      if (waited) {
         prev = null;
         last = b;
         continue;
@@ -505,8 +466,6 @@
       throw new Error((begin && begin.error) || "could not start capture");
     }
     backend = begin.backend || "cdp";
-    captureOffset = begin.offset || { x: 0, y: 0 };
-    clipShots = false;
     let failure = null;
     try {
       // With CDP the background has already waited for the "is debugging" bar
