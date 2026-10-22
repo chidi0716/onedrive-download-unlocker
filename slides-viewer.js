@@ -241,6 +241,20 @@
     return n;
   }
 
+  // The viewer covers a slide it hasn't rendered yet with a white overlay and a
+  // grey "slide layout" icon (#SlideBlockingIndicator, class SlideShimmer).
+  // It sits outside the slide wrapper, which can already hold the slide's
+  // text meanwhile, so check it on its own. Seen on a real deck: two slides
+  // of 50 were captured as just this icon.
+  function slideBlocked() {
+    const el = document.getElementById("SlideBlockingIndicator") || document.querySelector(".SlideShimmer");
+    if (!el) return false;
+    const b = el.getBoundingClientRect();
+    if (b.width < 20 || b.height < 20) return false;
+    const cs = getComputedStyle(el);
+    return cs.display !== "none" && cs.visibility !== "hidden" && parseFloat(cs.opacity) > 0.05;
+  }
+
   // Hide the "Click to add ..." prompts and empty-placeholder chrome while
   // capturing, so they don't end up in the PDF.
   function hideHints(on) {
@@ -322,6 +336,7 @@
     wrapperHasContent,
     slideSignature,
     loadingPictures,
+    slideBlocked,
     documentName,
     hideHints,
     dismissNotification,

@@ -158,7 +158,8 @@
       // pending made every slide wait out the full time cap.
       const pending =
         imgs.some((i) => (i.currentSrc || i.getAttribute("src")) && !i.complete) ||
-        V.loadingPictures(wrap) > 0; // a picture still shows its grey "loading" icon
+        V.loadingPictures(wrap) > 0 || // a picture still shows its grey "loading" icon
+        V.slideBlocked(); // the whole slide is still behind the "not rendered yet" overlay
       const sig = V.slideSignature(wrap);
       const same = sig === prevSig;
       prevSig = sig;
@@ -407,7 +408,7 @@
   }
 
   async function captureCurrent(slideNo, outputWidth, jpeg) {
-    let prev = null, last = null, pictureWaited = false;
+    let prev = null, last = null, pictureWaited = false, blockWaited = false;
     for (let attempt = 0; attempt < TIMING.captureTries; attempt++) {
       let box = V.currentSlideBox();
       if (!box || box.method === "derived") box = await settledSlideBox();
@@ -441,6 +442,17 @@
       // A picture that only started loading after the slide looked finished
       // shows a grey "loading" box in a shot that is otherwise stable. Wait for
       // it to swap in, then shoot again.
+      // The slide went back behind the "not rendered yet" overlay (or never
+      // left it): wait for it to clear, then shoot again.
+      if (V.slideBlocked() && !blockWaited) {
+        blockWaited = true;
+        const t = performance.now();
+        while (performance.now() - t < TIMING.slideReadyMaxMs && V.slideBlocked()) await sleep(TIMING.slidePollMs);
+        await sleep(TIMING.slideFloorMs);
+        prev = null;
+        last = b;
+        continue;
+      }
       const wrap = V.visibleWrapper();
       if (wrap && !pictureWaited && V.loadingPictures(wrap) > 0) {
         pictureWaited = true; // at most one wait per slide; a picture that never loads is kept as is
