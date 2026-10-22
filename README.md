@@ -76,13 +76,12 @@ No button? Reload the page, or open the popup and click **Rescan**.
 - The **✕** on the export button hides it for that page.
 - If an export stops partway, the slides done so far are still saved (e.g. `… (1-12 of 50).pdf`).
 - The "you don't have permission to edit" notice and the "Click to add…" placeholders are removed from the captures automatically.
-- In Arc, the window flashes on every slide.
 - Extensions that force-enable right-click / copy (e.g. *Absolute Enable Right Click & Copy*) slow exports down a lot; turn them off while exporting.
 
 ## How it works
 
-- **PDF download:** `background.js` watches requests on Microsoft domains (`webRequest`) and picks the one carrying the file by URL keywords (`passthrough`, `download.aspx`, `getfilebycontent`, `allowlistfiletype`, …). The download re-sends that request with its captured headers; files over 8 MB are passed to the page in 8 MB chunks, so size isn't limited by the browser's message cap.
-- **Slide export:** `slides.js` runs inside the PowerPoint viewer. It moves to each slide with the arrow keys, waits until the slide (fonts and pictures included) has finished rendering, captures it, and finally builds the PDF locally. Chrome / Edge capture through the debugger API (`Page.captureScreenshot`); Firefox uses `tabs.captureVisibleTab`.
+- **PDF download:** `background.js` finds the request carrying the file by URL keywords (`passthrough`, `download.aspx`, `getfilebycontent`, `allowlistfiletype`, …) and re-sends it with its captured headers. Files over 8 MB are passed to the page in 8 MB chunks.
+- **Slide export:** `slides.js` steps through the deck with the arrow keys, waits for each slide to finish rendering, captures it, and builds the PDF locally. Chrome / Edge capture via the debugger API, Firefox via `tabs.captureVisibleTab`.
 
 ## Building the zips
 
@@ -90,7 +89,7 @@ No button? Reload the page, or open the popup and click **Rescan**.
 powershell -ExecutionPolicy Bypass -File build.ps1   # macOS / Linux: pwsh build.ps1
 ```
 
-This writes `dist/onedrive-download-unlocker-<version>-chrome.zip` and `-firefox.zip`, with the version taken from `manifest.json`. The Firefox manifest is generated from `manifest.json`, so there's only one manifest to maintain.
+This writes `dist/onedrive-download-unlocker-<version>-chrome.zip` and `-firefox.zip`. The version and the Firefox manifest both come from `manifest.json`.
 
 ## File structure
 
@@ -108,9 +107,9 @@ This writes `dist/onedrive-download-unlocker-<version>-chrome.zip` and `-firefox
 
 ## Testing
 
-- **Slide export:** tuned over many rounds on macOS + Arc. Since 1.2.1, each release is checked on a real 50-slide SharePoint deck (pictures, tables, charts, CJK text), with every slide inspected. For 1.3.x: Chromium 50/50 slides in about 40 s (also on a 2× HiDPI screen, with no flashing), Firefox 157 50/50 slides in about 47 s. An automated test against a mock viewer covers the on-page button, cancelling, and partial saves (25/25).
+- **Slide export:** each release is exported from a real 50-slide SharePoint deck (pictures, tables, charts, CJK text) and every slide is inspected. 1.3.1: Chromium 50/50 in about 40 s (also at 2× HiDPI, no flashing), Firefox 157 50/50 in about 45 s. An automated test against a mock viewer covers the on-page button, cancelling, partial saves and slides that render late (26/26).
 - **Large files (issue #1):** byte-for-byte identical downloads at 8 MB, 70 MB, 150 MB and 400 MB against a mock SharePoint server that requires `X-SPOPacToken`.
-- **PDF download:** checked on a real SharePoint preview-only PDF, opened both from its own link and from inside a shared folder; the saved file is byte-for-byte identical to the original.
+- **PDF download:** a real SharePoint preview-only PDF, opened from its own link and from a shared folder, saves with the right name and is byte-for-byte identical to the original.
 - **Firefox PDF download (issue #2):** confirmed by the user who requested it.
 
 Found a problem? Open an issue with your browser, what you tried, and what happened.
@@ -118,7 +117,7 @@ Found a problem? Open an issue with your browser, what you tried, and what happe
 ## Known limitations
 
 - Only Microsoft's global cloud (`*.sharepoint.com` etc.) is covered, not sovereign clouds (`.sharepoint.us` / `.cn` / `.de`).
-- PDF detection relies on URL keywords. If Microsoft changes those URLs, `URL_KEYWORDS` in `background.js` needs updating.
+- PDF detection relies on URL keywords (`URL_KEYWORDS` in `background.js`).
 - Slide export produces an image-based PDF; the text is in the separate `.txt`. Planned next: a selectable text layer in the PDF, and output above display resolution.
 
 ## License

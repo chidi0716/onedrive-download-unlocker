@@ -76,13 +76,12 @@ Chrome／Edge 會要求確認 `debugger` 權限（用於擷取投影片）。更
 - 按匯出按鈕上的 **✕** 可在這個頁面隱藏它。
 - 匯出中途停止時，已完成的部分照樣會存下來（例如 `…(1-12 of 50).pdf`）。
 - 「您沒有編輯此檔案的權限」通知和「按一下以新增…」提示字會自動排除，不會出現在截圖裡。
-- Arc 瀏覽器每擷取一張，視窗會閃一下。
 - 強制開啟右鍵／複製的擴充功能（例如 *Absolute Enable Right Click & Copy*）會讓匯出變得很慢，匯出時請先停用。
 
 ## 運作原理
 
-- **PDF 下載**：`background.js` 監看微軟網域上的網路請求（`webRequest`），用網址關鍵字（`passthrough`、`download.aspx`、`getfilebycontent`、`allowlistfiletype` 等）找出帶有檔案內容的請求，下載時帶著擷取到的標頭重新送出。超過 8 MB 的檔案分成每塊 8 MB 傳到頁面，所以不受瀏覽器訊息大小上限影響。
-- **投影片匯出**：`slides.js` 在 PowerPoint 檢視器裡執行，用方向鍵逐張切換，等每張投影片（含字型和圖片）完全渲染後擷取，最後在本機組成 PDF。Chrome／Edge 透過 debugger API（`Page.captureScreenshot`）擷取，Firefox 用 `tabs.captureVisibleTab`。
+- **PDF 下載**：`background.js` 用網址關鍵字（`passthrough`、`download.aspx`、`getfilebycontent`、`allowlistfiletype` 等）找出帶有檔案內容的請求，帶著擷取到的標頭重新送出。超過 8 MB 的檔案分成每塊 8 MB 傳到頁面。
+- **投影片匯出**：`slides.js` 用方向鍵逐張切換，等每張渲染完成後擷取，在本機組成 PDF。Chrome／Edge 透過 debugger API 擷取，Firefox 用 `tabs.captureVisibleTab`。
 
 ## 自行打包
 
@@ -90,7 +89,7 @@ Chrome／Edge 會要求確認 `debugger` 權限（用於擷取投影片）。更
 powershell -ExecutionPolicy Bypass -File build.ps1   # macOS／Linux：pwsh build.ps1
 ```
 
-會在 `dist/` 產出 `onedrive-download-unlocker-<版本>-chrome.zip` 和 `-firefox.zip`，版本號取自 `manifest.json`。Firefox 版的 manifest 由 `manifest.json` 自動產生，只需要維護一份。
+會在 `dist/` 產出 `onedrive-download-unlocker-<版本>-chrome.zip` 和 `-firefox.zip`。版本號與 Firefox 版 manifest 都取自 `manifest.json`。
 
 ## 檔案結構
 
@@ -108,9 +107,9 @@ powershell -ExecutionPolicy Bypass -File build.ps1   # macOS／Linux：pwsh buil
 
 ## 測試
 
-- **投影片匯出**：在 macOS + Arc 上經多輪實測調校。1.2.1 起每個版本都用真實的 50 張 SharePoint 簡報（含圖片、表格、圖表、中日文）完整匯出並逐張檢查。1.3.x：Chromium 50/50 張，約 40 秒（2 倍高解析度螢幕也測過，不會閃爍）；Firefox 157 50/50 張，約 47 秒。另有對模擬檢視器的自動化測試，涵蓋頁內按鈕、取消、部分保存（25/25）。
+- **投影片匯出**：每個版本都用真實的 50 張 SharePoint 簡報（含圖片、表格、圖表、中日文）完整匯出並逐張檢查。1.3.1：Chromium 50/50 張，約 40 秒（含 2 倍高解析度，不閃爍）；Firefox 157 50/50 張，約 45 秒。模擬檢視器的自動化測試涵蓋頁內按鈕、取消、部分保存與較晚畫好的投影片（26/26）。
 - **大型檔案（issue #1）**：對需要 `X-SPOPacToken` 的模擬 SharePoint 伺服器測試 8 MB、70 MB、150 MB、400 MB，下載結果與原檔逐位元組相同。
-- **PDF 下載**：用真實的 SharePoint 只能預覽 PDF 測試，從單一檔案連結和分享資料夾內開啟都測過，存下的檔案與原檔逐位元組相同。
+- **PDF 下載**：真實的 SharePoint 只能預覽 PDF，從單一檔案連結和分享資料夾開啟，都以正確檔名存下，與原檔逐位元組相同。
 - **Firefox PDF 下載（issue #2）**：由提出需求的使用者確認可用。
 
 遇到問題請開 Issue，附上瀏覽器、操作步驟和發生的狀況。
@@ -118,7 +117,7 @@ powershell -ExecutionPolicy Bypass -File build.ps1   # macOS／Linux：pwsh buil
 ## 已知限制
 
 - 只支援微軟全球商用雲（`*.sharepoint.com` 等），不含主權雲（`.sharepoint.us`／`.cn`／`.de`）。
-- PDF 偵測靠網址關鍵字。微軟改了這些網址的話，需要更新 `background.js` 裡的 `URL_KEYWORDS`。
+- PDF 偵測靠網址關鍵字（`background.js` 的 `URL_KEYWORDS`）。
 - 投影片匯出是圖片式 PDF，文字另存在 `.txt`。下一步規劃：PDF 內可選取的文字層，以及超過螢幕解析度的輸出。
 
 ## 授權
