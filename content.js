@@ -20,6 +20,10 @@
   window.__odpdfInjected = true;
 
   const EXT_PATTERN = /\.(pdf|docx?|xlsx?|pptx?)$/i;
+  // A file name: an extension with a name before it. A bare ".pdf" is the
+  // file-type icon's label in folder views, not a name.
+  const looksLikeFileName = (v) => !!v && v.length < 200 && EXT_PATTERN.test(v) && v.replace(EXT_PATTERN, "").trim().length > 0;
+  const TITLE_SUFFIX = /\s*[-|–]\s*(OneDrive|SharePoint).*$/i;
 
   const NATIVE_BUTTON_SELECTORS = [
     "#downloadCommand",
@@ -138,27 +142,32 @@
 
     const ariaEls = document.querySelectorAll("[aria-label]");
     for (const el of ariaEls) {
-      const v = el.getAttribute("aria-label");
-      if (v && EXT_PATTERN.test(v.trim()) && v.trim().length < 200) return v.trim();
+      const v = (el.getAttribute("aria-label") || "").trim();
+      if (looksLikeFileName(v)) return v;
     }
 
     const fuiNodes = document.querySelectorAll('[class*="fui-Text"]');
     for (const el of fuiNodes) {
       const text = el.textContent && el.textContent.trim();
-      if (text && EXT_PATTERN.test(text) && text.length < 200) return text;
+      if (looksLikeFileName(text)) return text;
     }
 
     const all = document.querySelectorAll("body *");
     for (const el of all) {
       if (el.children && el.children.length > 0) continue;
       const text = el.textContent && el.textContent.trim();
-      if (text && EXT_PATTERN.test(text) && text.length < 200) return text;
+      if (looksLikeFileName(text)) return text;
     }
 
     return "";
   }
 
   function guessFilename(candidate) {
+    // The tab title names the open file in the preview. Check it before the
+    // page text: a folder view also lists the other files in the folder.
+    const titleName = (document.title || "").trim().replace(TITLE_SUFFIX, "");
+    if (looksLikeFileName(titleName)) return ensurePdfExt(sanitizeFilename(titleName));
+
     const domName = domFilenameGuess();
     if (domName) {
       let name = sanitizeFilename(domName);

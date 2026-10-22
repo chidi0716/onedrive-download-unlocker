@@ -2,7 +2,7 @@
 
 # OneDrive / SharePoint Download Unlocker
 
-Last updated: 2026-10-21 (version 1.3.0)
+Last updated: 2026-10-22 (version 1.3.1)
 
 A browser extension (Manifest V3) for files on OneDrive / SharePoint that you can view but not download. It does two things:
 
@@ -108,8 +108,9 @@ This writes `dist/onedrive-download-unlocker-<version>-chrome.zip` and `-firefox
 
 ## Testing
 
-- **Slide export:** tuned over many rounds on macOS + Arc. Since 1.2.1, each release is checked on a real 50-slide SharePoint deck (pictures, tables, charts, CJK text), with every slide inspected. For 1.3.0: Chromium 50/50 slides in about 41 s, Firefox 157 50/50 slides in about 47 s. An automated test against a mock viewer covers the on-page button, cancelling, and partial saves (25/25).
+- **Slide export:** tuned over many rounds on macOS + Arc. Since 1.2.1, each release is checked on a real 50-slide SharePoint deck (pictures, tables, charts, CJK text), with every slide inspected. For 1.3.x: Chromium 50/50 slides in about 40 s (also on a 2× HiDPI screen, with no flashing), Firefox 157 50/50 slides in about 47 s. An automated test against a mock viewer covers the on-page button, cancelling, and partial saves (25/25).
 - **Large files (issue #1):** byte-for-byte identical downloads at 8 MB, 70 MB, 150 MB and 400 MB against a mock SharePoint server that requires `X-SPOPacToken`.
+- **PDF download:** checked on a real SharePoint preview-only PDF, opened both from its own link and from inside a shared folder; the saved file is byte-for-byte identical to the original.
 - **Firefox PDF download (issue #2):** confirmed by the user who requested it.
 
 Found a problem? Open an issue with your browser, what you tried, and what happened.
