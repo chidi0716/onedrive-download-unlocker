@@ -218,6 +218,39 @@
   }
   #empty .empty-icon { font-size: 28px; display: block; margin-bottom: 8px; }
 
+  #updateBar {
+    background: var(--accent-soft);
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+    border-radius: 10px;
+    padding: 9px 11px;
+    margin-bottom: 10px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--accent-dark);
+  }
+  .update-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 7px; }
+  #updateGo {
+    background: var(--accent-fill);
+    color: #fff;
+    border: 0;
+    border-radius: 6px;
+    padding: 4px 11px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  #updateGo:hover { background: var(--accent-fill-hover); }
+  button.link {
+    background: none;
+    border: 0;
+    padding: 0;
+    color: var(--muted);
+    font-size: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  #updateBar button.link { font-size: 12px; font-weight: 400; }
+  #updateOffNote { margin-top: 4px; }
   footer {
     font-size: 10.5px;
     color: var(--muted);
@@ -294,6 +327,15 @@
   </header>
 
   <div class="body-pad">
+    <div id="updateBar" style="display:none;">
+      <span id="updateText"></span>
+      <div class="update-actions">
+        <button id="updateGo"></button>
+        <button id="updateSkip" class="link"></button>
+        <button id="updateNever" class="link"></button>
+      </div>
+    </div>
+
     <details class="help">
       <summary id="helpSummary">How to use</summary>
       <ol id="helpSteps"></ol>
@@ -324,7 +366,10 @@
     </div>
   </div>
 
-  <footer id="footerText"></footer>
+  <footer>
+    <div id="footerText"></div>
+    <div id="updateOffNote" style="display:none;"><span id="updateOffText"></span> <button id="updateTurnOn" class="link"></button></div>
+  </footer>
 
   <script src="i18n.js"></script>
   <script src="util.js"></script>

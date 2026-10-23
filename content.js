@@ -650,6 +650,7 @@
       setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
 
       setLabel(tr("btnSaved"), { disabled: false });
+      chrome.runtime.sendMessage({ type: "UPDATE_CHECK" }, () => void chrome.runtime.lastError); // new-version badge, at most daily
       setTimeout(() => { isBusy = false; setLabel(idleLabel, { disabled: false }); }, 3500);
     } catch (e) {
       setLabel(tr("btnFailed") + (e && e.message ? e.message : String(e)), { disabled: false });

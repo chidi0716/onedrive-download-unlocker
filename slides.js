@@ -601,6 +601,7 @@
     try {
       const { n, secs } = await exportSlides(withImages, quality);
       setStatus(tr(withImages ? "slidesDone" : "slidesTextDone", { n, s: secs }), "done");
+      send({ type: "UPDATE_CHECK" }); // new-version badge, at most daily
     } catch (e) {
       const partial = e && e.partial ? " " + tr("slidesPartialSaved", { k: e.partial, n: e.total }) : "";
       if (e && e.cancelled) {

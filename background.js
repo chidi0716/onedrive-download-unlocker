@@ -783,7 +783,64 @@ async function fxSlideInput(tabId, input) {
   });
 }
 
+// ---- New-version reminder ----
+// Checked only while the user is already using the extension (popup opened,
+// a download or export finished), at most once a day, never on a timer. The
+// GitHub API allows cross-origin reads, so no host permission is needed.
+const RELEASES_API = "https://api.github.com/repos/chidi0716/onedrive-download-unlocker/releases/latest";
+const UPDATE_CHECK_MS = 24 * 60 * 60 * 1000;
+const UPDATE_RETRY_MS = 60 * 60 * 1000; // after a failed check (offline, rate limit on a shared network)
+const UPDATE_KEYS = { checkedAt: "odpdf_update_checked_at", latest: "odpdf_update_latest", skip: "odpdf_update_skip", off: "odpdf_update_off" };
+
+function isNewerVersion(a, b) {
+  const pa = a.split(".").map((n) => parseInt(n, 10) || 0), pb = b.split(".").map((n) => parseInt(n, 10) || 0);
+  for (let i = 0; i < 3; i++) if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) > (pb[i] || 0);
+  return false;
+}
+
+// Returns { update: {version, url} | null, off } and sets the toolbar badge.
+async function checkForUpdate() {
+  const st = await chrome.storage.local.get(Object.values(UPDATE_KEYS));
+  const off = !!st[UPDATE_KEYS.off];
+  let latest = st[UPDATE_KEYS.latest] || null;
+  if (!off && Date.now() - (st[UPDATE_KEYS.checkedAt] || 0) >= UPDATE_CHECK_MS) {
+    let ok = false;
+    try {
+      const r = await fetch(RELEASES_API, { headers: { Accept: "application/vnd.github+json" } });
+      if (r.ok) {
+        const j = await r.json();
+        latest = { version: String(j.tag_name || "").replace(/^v/i, ""), url: j.html_url };
+        ok = true;
+      }
+    } catch (e) {
+      // offline: handled below
+    }
+    const checkedAt = ok ? Date.now() : Date.now() - UPDATE_CHECK_MS + UPDATE_RETRY_MS;
+    await chrome.storage.local.set(ok ? { [UPDATE_KEYS.checkedAt]: checkedAt, [UPDATE_KEYS.latest]: latest } : { [UPDATE_KEYS.checkedAt]: checkedAt });
+  }
+  const update = !off && latest && latest.version !== st[UPDATE_KEYS.skip] && isNewerVersion(latest.version, chrome.runtime.getManifest().version) ? latest : null;
+  try {
+    chrome.action.setBadgeBackgroundColor({ color: "#2563eb" });
+    chrome.action.setBadgeText({ text: update ? "NEW" : "" });
+  } catch (e) {
+    // no badge support: the popup banner still shows it
+  }
+  return { update, off };
+}
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg && msg.type === "UPDATE_CHECK") {
+    checkForUpdate().then(sendResponse, () => sendResponse({ update: null, off: false }));
+    return true;
+  }
+  if (msg && msg.type === "UPDATE_SKIP") {
+    chrome.storage.local.set({ [UPDATE_KEYS.skip]: msg.version }).then(checkForUpdate).then(sendResponse);
+    return true;
+  }
+  if (msg && msg.type === "UPDATE_OFF") {
+    chrome.storage.local.set({ [UPDATE_KEYS.off]: !!msg.off }).then(checkForUpdate).then(sendResponse);
+    return true;
+  }
   if (msg && msg.type === "SLIDES_BEGIN") {
     // `backend`: "cdp" (debugger) or "tab" (Firefox: captureVisibleTab, which
     // re-renders at any scale, plus the page-world input handler).

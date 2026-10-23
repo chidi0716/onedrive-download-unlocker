@@ -46,6 +46,7 @@ background.js picks a backend with `USE_CDP = !!chrome.debugger`; the `fx*` func
 - **`slides-viewer.js` holds every assumption about PowerPoint for the web's DOM** (thumbnails `[role=option][class*=thumbnail]` with `aria-posinset/aria-selected`, `#PageContentSizeWrapperN`, `#WACViewPanel`, "Slide X of N", the permission toast). When Microsoft changes the viewer, fix it here.
 - All slide-export waits/timeouts are in the `TIMING` object at the top of `slides.js`.
 - Every user-visible string goes in `i18n.js`; the `en` and `zh-Hant` tables must keep identical keys.
+- New-version reminder: `checkForUpdate()` in background.js reads GitHub's `releases/latest` (CORS-enabled, so no host permission), at most once a day and only when triggered by `UPDATE_CHECK` (popup open, a saved download, a finished export) — never on a timer. Keys `odpdf_update_*` in `chrome.storage.local`; badge "NEW" plus the popup's `#updateBar`. Keep PRIVACY.md in sync if this changes.
 
 ## Hard-won constraints (don't regress these)
 - **Never CSS-hide the "no edit permission" toast** (Fluent callout `#BaseCallout…`): Fluent re-creates it in a loop and janks the whole browser. `dismissNotification` light-dismisses it (synthetic outside click) and otherwise clicks its single OK button; only single-button alert callouts are touched, never removed by hand.

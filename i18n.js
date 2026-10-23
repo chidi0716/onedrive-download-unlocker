@@ -67,6 +67,12 @@
       helpSlides1: "Open the deck in <b>PowerPoint for the web</b> and wait until the slides appear",
       helpSlides2: "Pick a <b>quality</b> below and click <b>\"Export slides (PDF)\"</b> — or use the orange button at the bottom-right of the page",
       helpSlides3: "The PDF and a .txt of the slide text go to your <b>Downloads</b> folder",
+      updateAvailable: "Version {v} is available",
+      updateGo: "Download",
+      updateSkip: "Skip this version",
+      updateNever: "Don't remind me",
+      updateOff: "New-version reminders are off.",
+      updateTurnOn: "Turn on",
     },
     "zh-Hant": {
       popupTitleLine1: "OneDrive / SharePoint",
@@ -126,6 +132,12 @@
       helpSlides1: "在 <b>PowerPoint 網頁版</b>開啟簡報，等投影片顯示出來",
       helpSlides2: "在下方選擇<b>畫質</b>後按<b>「匯出投影片（PDF）」</b>，或直接點頁面右下角的橘色按鈕",
       helpSlides3: "PDF 與投影片文字的 .txt 會存到<b>「下載」</b>資料夾",
+      updateAvailable: "新版本 {v} 已發布",
+      updateGo: "前往下載",
+      updateSkip: "跳過這個版本",
+      updateNever: "不再提示",
+      updateOff: "已關閉新版本提醒。",
+      updateTurnOn: "重新開啟",
     },
   };
 

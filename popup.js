@@ -351,6 +351,41 @@ function applyStaticI18n() {
   document.getElementById("emptyText").innerHTML = tr("emptyText");
   document.getElementById("footerText").textContent = tr("footerText");
   document.getElementById("langSelect").value = LANG;
+  renderUpdate();
+}
+
+// New-version reminder: the background checks GitHub at most once a day.
+let updateState = { update: null, off: false };
+
+function renderUpdate() {
+  const u = updateState.update;
+  document.getElementById("updateBar").style.display = u ? "" : "none";
+  document.getElementById("updateOffNote").style.display = updateState.off ? "" : "none";
+  if (u) document.getElementById("updateText").textContent = tr("updateAvailable").replace("{v}", u.version);
+  document.getElementById("updateGo").textContent = tr("updateGo");
+  document.getElementById("updateSkip").textContent = tr("updateSkip");
+  document.getElementById("updateNever").textContent = tr("updateNever");
+  document.getElementById("updateOffText").textContent = tr("updateOff");
+  document.getElementById("updateTurnOn").textContent = tr("updateTurnOn");
+}
+
+function sendUpdate(msg) {
+  chrome.runtime.sendMessage(msg, (r) => {
+    void chrome.runtime.lastError;
+    if (r) updateState = r;
+    renderUpdate();
+  });
+}
+
+function initUpdate() {
+  sendUpdate({ type: "UPDATE_CHECK" });
+  document.getElementById("updateGo").addEventListener("click", () => {
+    chrome.tabs.create({ url: updateState.update.url });
+    window.close();
+  });
+  document.getElementById("updateSkip").addEventListener("click", () => sendUpdate({ type: "UPDATE_SKIP", version: updateState.update.version }));
+  document.getElementById("updateNever").addEventListener("click", () => sendUpdate({ type: "UPDATE_OFF", off: true }));
+  document.getElementById("updateTurnOn").addEventListener("click", () => sendUpdate({ type: "UPDATE_OFF", off: false }));
 }
 
 function initQuality() {
@@ -389,3 +424,4 @@ document.getElementById("refresh").addEventListener("click", refresh);
 document.getElementById("slidesPdf").addEventListener("click", () => startSlides(true));
 document.getElementById("slidesText").addEventListener("click", () => startSlides(false));
 initLang();
+initUpdate();

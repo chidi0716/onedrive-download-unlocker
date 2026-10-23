@@ -72,6 +72,8 @@ No button? Reload the page, or open the popup and click **Rescan**.
 - Keep the tab in front during the export.
 - Requires Firefox 140 or later.
 
+**New versions:** when you open the popup or a download finishes (at most once a day), the extension checks GitHub for a newer release. If there is one, the toolbar icon shows **NEW** and the popup offers **Download**, **Skip this version** or **Don't remind me**.
+
 **Good to know:**
 - The **✕** on the export button hides it for that page.
 - If an export stops partway, the slides done so far are still saved (e.g. `… (1-12 of 50).pdf`).
