@@ -516,6 +516,7 @@ async function beginSlideExport(tabId, frameId, frameUrl) {
   const metrics = await cdp(tabId, "Page.getLayoutMetrics", {});
   slideExportByTab[tabId].viewportWidth = metrics.cssLayoutViewport.clientWidth;
   slideExportByTab[tabId].clipShots = false;
+  slideExportByTab[tabId].lastShot = null;
   // NOTE: we deliberately do NOT hide the SharePoint chrome ("isolation").
   // Every capture is clipped to the slide's own rectangle, so the ribbon,
   // thumbnail rail and status bar are never in the image regardless. Hiding
@@ -531,7 +532,7 @@ async function beginSlideExport(tabId, frameId, frameUrl) {
 // of the shot, which shows as a flash on every slide in Chrome / Edge, so a
 // clipped shot is only the fallback for a full shot that doesn't cover the
 // slide (seen under device emulation). Returns a base64 JPEG outputWidth wide.
-const FULL_SHOT_QUALITY = 95; // re-encoded at the chosen quality after cropping
+const FULL_SHOT_QUALITY = 90; // re-encoded at the chosen quality after cropping
 
 async function captureSlide(tabId, rect, outputWidth, jpeg) {
   const st = slideExportByTab[tabId];
@@ -539,8 +540,12 @@ async function captureSlide(tabId, rect, outputWidth, jpeg) {
   const quality = jpeg >= 1 && jpeg <= 100 ? jpeg : 80;
   const area = { x: st.offset.x + rect.x, y: st.offset.y + rect.y, width: rect.width, height: rect.height };
   if (!st.clipShots) {
-    const full = await screenshot(tabId, { format: "jpeg", quality: FULL_SHOT_QUALITY, captureBeyondViewport: false });
+    const full = await screenshot(tabId, { format: "jpeg", quality: FULL_SHOT_QUALITY, optimizeForSpeed: true, captureBeyondViewport: false });
+    // The verify shot is often identical to the one before it; reuse its crop.
+    const key = [area.x, area.y, area.width, area.height, outputWidth, quality].join();
+    if (st.lastShot && st.lastShot.full === full && st.lastShot.key === key) return st.lastShot.cut;
     const cut = await cropShot(st, full, area, outputWidth, quality);
+    st.lastShot = cut ? { full, key, cut } : null;
     if (cut !== null) return cut;
     st.clipShots = true; // for the rest of this export
   }

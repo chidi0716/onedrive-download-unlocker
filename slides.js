@@ -44,7 +44,7 @@
     navSwitchMaxMs: 5000, // how long one key press may take to switch slides
     navStuckTries: 3, // key presses that moved nothing before clicking a thumbnail
     captureTries: 5, // shots per slide (it needs two identical ones)
-    verifyGapMs: 120, // pause between the two shots compared
+    verifyGapMs: 120, // min time from one compared shot's start to the next
     pictureWaitMs: 5000, // max wait for a picture still showing its loading icon at capture time
     badCaptureRetryMs: 150,
     toastProbeSlides: 3, // look for the "no edit permission" toast on the first N slides
@@ -428,8 +428,9 @@
       if (prev) reshots++;
       prev = moved ? null : b;
       last = b;
-      // Firefox: a shot alone takes longer than the gap, so count it in.
-      await sleep(backend === "tab" ? TIMING.verifyGapMs - (performance.now() - shotAt) : TIMING.verifyGapMs);
+      // The gap runs from the start of the shot: a shot (Chrome's full-tab
+      // shot plus crop, Firefox's re-render) often takes longer than the gap.
+      await sleep(TIMING.verifyGapMs - (performance.now() - shotAt));
     }
     if (!last) throw new Error("slide " + slideNo + ": capture was not a valid image");
     return last; // never settled (e.g. an animated picture): keep the latest shot
