@@ -18,7 +18,7 @@ A browser extension (Manifest V3) for files on OneDrive / SharePoint that you ca
 
 ## Why
 
-Files set to "preview only" have no download button, but their content still reaches the browser. Saving one used to mean finding the right request in DevTools, copying its URL and auth headers, and re-sending it by hand. The extension does this automatically and adds a download button to the page.
+Files set to "preview only" have no download button, but their content still reaches the browser. The extension finds it and adds a download button to the page.
 
 ## Screenshots
 
@@ -72,7 +72,7 @@ No button? Reload the page, or open the popup and click **Rescan**.
 - Keep the tab in front during the export.
 - Requires Firefox 140 or later.
 
-**New versions:** when you open the popup or a download finishes (at most once a day), the extension checks GitHub for a newer release. If there is one, the toolbar icon shows **NEW** and the popup offers **Download**, **Skip this version** or **Don't remind me**.
+**New versions:** the toolbar icon shows **NEW** when a newer release is out, and the popup offers **Download**, **Skip this version** or **Don't remind me**. The check runs at most once a day, when you open the popup or a download finishes.
 
 **Good to know:**
 - The **✕** on the export button hides it for that page.

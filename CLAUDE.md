@@ -62,4 +62,4 @@ The public Office viewer can open the full PowerPoint editor for any public `.pp
 ## Repo conventions
 - Commits are authored as `chidi0716 <chidi0716@gmail.com>` without AI attribution trailers.
 - When behaviour changes, update README.md and README.zh-TW.md together, add a CHANGELOG entry, and keep PRIVACY.md in sync with permissions and stored settings.
-- Docs must not state real-device results that haven't been verified; mark them as expected/unverified.
+- Writing style for everything user-facing (README, CHANGELOG, PRIVACY, UI strings, release notes) and for replies to the owner: state verified facts plainly; cut explanatory asides that don't change what the reader does; leave out guesses and unverified claims (including real-device results nobody has confirmed) rather than hedging them.

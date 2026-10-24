@@ -2,7 +2,7 @@
 
 **OneDrive / SharePoint Download Unlocker**
 
-最後更新 / Last updated: 2026-10-23
+最後更新 / Last updated: 2026-10-24
 
 ---
 
@@ -20,9 +20,9 @@
 這個擴充功能的所有運作都只發生在你自己的瀏覽器裡：
 
 - 偵測檔案請求、抓取檔案內容、擷取投影片、組成檔案、觸發下載，全部都在你的電腦本機完成。
-- 我們**不會**把你瀏覽的網址、檔案內容、檔案名稱、帳號資訊或任何其他資料傳送到任何外部伺服器、第三方服務，或開發者的伺服器（開發者沒有任何伺服器）。
+- 我們**不會**把你瀏覽的網址、檔案內容、檔案名稱、帳號資訊或任何其他資料傳送到任何外部伺服器、第三方服務，或開發者。
 - 沒有任何分析、追蹤、廣告或遠端記錄功能。
-- 唯一的對外連線是**新版本檢查**：在你打開彈出視窗或下載／匯出完成時，最多每天一次向 GitHub 公開的 API（`api.github.com`）讀取本專案最新的版本號。這個請求不帶任何你的資料。可以在提示上選「不再提示」關閉。
+- 除了向微軟重新取得你要下載的檔案，唯一的對外連線是**新版本檢查**：打開彈出視窗或下載／匯出完成時，每天最多一次向 GitHub 公開 API（`api.github.com`）讀取本專案最新的版本號，不帶任何你的資料。在提示上選「不再提示」即可關閉。
 
 ### 本機儲存的資料
 
@@ -61,9 +61,9 @@ This extension does two things:
 Everything this extension does happens entirely inside your own browser:
 
 - Detecting file requests, fetching file bytes, capturing slides, building the files, and triggering the download all happen locally on your machine.
-- We do **not** send the URLs you visit, file contents, filenames, account information, or any other data to any external server, third-party service, or the developer (the developer runs no servers).
+- We do **not** send the URLs you visit, file contents, filenames, account information, or any other data to any external server, third-party service, or the developer.
 - There is no analytics, tracking, advertising, or remote logging of any kind.
-- The only outbound request is the **new-version check**: when you open the popup or a download/export finishes, at most once a day, the extension reads this project's latest version number from GitHub's public API (`api.github.com`). The request carries none of your data. Choose "Don't remind me" on the notice to turn it off.
+- Apart from re-fetching the file you download from Microsoft, the only outbound request is the **new-version check**: when you open the popup or a download/export finishes, at most once a day, it reads this project's latest version number from GitHub's public API (`api.github.com`), carrying none of your data. Choose "Don't remind me" on the notice to turn it off.
 
 ### Data stored locally
 
