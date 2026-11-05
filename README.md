@@ -93,6 +93,20 @@ powershell -ExecutionPolicy Bypass -File build.ps1   # macOS / Linux: pwsh build
 
 This writes `dist/onedrive-download-unlocker-<version>-chrome.zip` and `-firefox.zip`. The version and the Firefox manifest both come from `manifest.json`.
 
+Test commands (Node.js 20):
+
+```sh
+npm ci
+npm run check
+npm test
+npx playwright install chromium
+npm run test:e2e
+# After building the zips:
+npm run lint:firefox
+```
+
+Publishing a GitHub Release runs the release workflow and attaches the Chrome and Firefox zips. The tag without its leading `v` must match the version in `manifest.json`.
+
 ## File structure
 
 - `manifest.json` — extension configuration (Firefox's is generated from it by `build.ps1`)

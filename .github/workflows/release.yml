@@ -1,0 +1,27 @@
+name: Release packages
+on:
+  release:
+    types: [published]
+permissions:
+  contents: write
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.event.release.tag_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Verify version
+        run: node -e 'if (require("./manifest.json").version !== process.env.TAG.replace(/^v/, "")) process.exit(1)'
+      - run: npm ci
+      - run: pwsh build.ps1
+      - run: npm run lint:firefox
+      - run: gh release upload "$TAG" dist/*.zip --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}

@@ -9,12 +9,16 @@ A Manifest V3 browser extension (Chrome / Edge / Firefox) with two features:
 1. **PDF download** from OneDrive / SharePoint "preview only" pages: the background watches network requests, finds the one carrying the file content, and re-fetches it with the captured auth headers.
 2. **PowerPoint-for-web slide export**: walks a view-only deck slide by slide inside the PowerPoint viewer, captures each slide (Chrome / Edge: DevTools protocol via `chrome.debugger`; Firefox: `tabs.captureVisibleTab`), and saves an image-based PDF plus a `.txt` of the slide text.
 
-Plain JavaScript, no build step, no dependencies, no tests in the repo. User-facing docs are bilingual (README.md / README.zh-TW.md); CHANGELOG.md is written in Traditional Chinese.
+Plain JavaScript, no build step, no runtime dependencies. Automated tests use Node.js and Playwright. User-facing docs are bilingual (README.md / README.zh-TW.md); CHANGELOG.md is written in Traditional Chinese.
 
 ## Commands
 
-- Syntax check (the only automated check): `for f in *.js; do node --check "$f"; done`
-- Package: `pwsh build.ps1` (or `powershell -ExecutionPolicy Bypass -File build.ps1` on Windows) → `dist/onedrive-download-unlocker-<version>-chrome.zip` and `-firefox.zip`. `<version>` comes from `manifest.json`. `dist/` and zips are git-ignored; release zips are attached to GitHub Releases by hand.
+- Install test tools: `npm ci`
+- Syntax check: `npm run check`
+- Unit tests: `npm test`
+- Browser tests: `npx playwright install chromium`, then `npm run test:e2e`
+- Firefox package validation after building: `npm run lint:firefox`
+- Package: `pwsh build.ps1` (or `powershell -ExecutionPolicy Bypass -File build.ps1` on Windows) → `dist/onedrive-download-unlocker-<version>-chrome.zip` and `-firefox.zip`. `<version>` comes from `manifest.json`. `dist/` and zips are git-ignored; publishing a GitHub Release runs the release workflow, which verifies the tag version, builds and validates the packages, and attaches the zips. Release notes are written by hand.
 - Run in Chrome: `chrome://extensions` → Developer mode → Load unpacked → repo root. Firefox needs the built firefox zip (its manifest only exists inside it).
 - Validate the Firefox package the way addons.mozilla.org does: `npx addons-linter dist/onedrive-download-unlocker-<version>-firefox.zip` (must report 0 errors; the `debugger.*` / `innerHTML` warnings are known and harmless).
 - Sign for self-distribution (unlisted): unzip the firefox zip to a folder, then `npx web-ext sign --channel=unlisted --source-dir <folder> --api-key "$WEB_EXT_API_KEY" --api-secret "$WEB_EXT_API_SECRET"`. Credentials are the owner's AMO API keys and are never committed; each signed version number can only be used once.

@@ -1,0 +1,14 @@
+{
+  "name": "onedrive-download-unlocker",
+  "private": true,
+  "scripts": {
+    "check": "node tests/check-syntax.mjs",
+    "test": "node --test tests/unit",
+    "test:e2e": "node tests/e2e/run.js",
+    "lint:firefox": "node tests/lint-firefox.mjs"
+  },
+  "devDependencies": {
+    "addons-linter": "9.3.0",
+    "playwright": "1.63.0"
+  }
+}

@@ -2,6 +2,12 @@
 
 本專案版本紀錄遵循 [Keep a Changelog](https://keepachangelog.com/) 格式，版本號採用 [Semantic Versioning](https://semver.org/)。
 
+## [Unreleased]
+
+### 新增
+
+- 加入語法檢查、單元測試、瀏覽器端到端測試與 GitHub Actions；推送與拉取請求會執行測試，發布 Release 後會自動附上打包的 zip。
+
 ## [1.3.2] - 2026-10-23
 
 ### 新增

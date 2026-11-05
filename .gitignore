@@ -12,6 +12,8 @@ dist/
 .build-staging/
 
 # Logs
+node_modules/
+tests/out/
 *.log
 
 # 未去識別化的原始截圖（含真實帳號/網址，不可進 repo）

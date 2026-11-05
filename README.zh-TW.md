@@ -93,6 +93,20 @@ powershell -ExecutionPolicy Bypass -File build.ps1   # macOS／Linux：pwsh buil
 
 會在 `dist/` 產出 `onedrive-download-unlocker-<版本>-chrome.zip` 和 `-firefox.zip`。版本號與 Firefox 版 manifest 都取自 `manifest.json`。
 
+測試指令（Node.js 20）：
+
+```sh
+npm ci
+npm run check
+npm test
+npx playwright install chromium
+npm run test:e2e
+# 打包後執行：
+npm run lint:firefox
+```
+
+發布 GitHub Release 後，工作流程會附上 Chrome 與 Firefox 的 zip。標籤移除開頭的 `v` 後，須與 `manifest.json` 的版本號相同。
+
 ## 檔案結構
 
 - `manifest.json`：擴充功能設定（Firefox 版由 `build.ps1` 自動產生）
