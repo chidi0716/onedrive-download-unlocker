@@ -1,11 +1,13 @@
 name: Release
-# A push to main that changes manifest.json creates the release for its version
-# (notes = that version's CHANGELOG section) and attaches the zips, unless the
-# release already exists. A release published by hand gets the zips attached.
+# A push to main that changes manifest.json or release notes creates the release
+# for the manifest version and attaches the zips. Notes: .github/release-notes/
+# v<version>.md (first line "# <title>"), else the CHANGELOG section. If the
+# release already exists, only its title and notes are refreshed from that file.
+# A release published by hand gets the zips attached.
 on:
   push:
     branches: [main]
-    paths: [manifest.json]
+    paths: [manifest.json, .github/release-notes/**]
   release:
     types: [published]
   workflow_dispatch:
@@ -30,29 +32,34 @@ jobs:
             [ "${{ github.event.release.tag_name }}" = "$TAG" ] || { echo "Tag does not match manifest version $VERSION"; exit 1; }
             echo "mode=upload" >> "$GITHUB_OUTPUT"
           elif gh release view "$TAG" >/dev/null 2>&1; then
-            echo "$TAG already released"; echo "mode=skip" >> "$GITHUB_OUTPUT"
+            echo "$TAG already released"; echo "mode=notes" >> "$GITHUB_OUTPUT"
           else
             echo "mode=create" >> "$GITHUB_OUTPUT"
           fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-      - if: steps.decide.outputs.mode != 'skip'
+      - if: steps.decide.outputs.mode == 'create' || steps.decide.outputs.mode == 'upload'
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-      - if: steps.decide.outputs.mode != 'skip'
+      - if: steps.decide.outputs.mode == 'create' || steps.decide.outputs.mode == 'upload'
         run: npm ci
-      - if: steps.decide.outputs.mode != 'skip'
+      - if: steps.decide.outputs.mode == 'create' || steps.decide.outputs.mode == 'upload'
         run: npm run check && npm test
-      - if: steps.decide.outputs.mode != 'skip'
+      - if: steps.decide.outputs.mode == 'create' || steps.decide.outputs.mode == 'upload'
         run: pwsh build.ps1
-      - if: steps.decide.outputs.mode != 'skip'
+      - if: steps.decide.outputs.mode == 'create' || steps.decide.outputs.mode == 'upload'
         run: npm run lint:firefox
       - name: Create release
         if: steps.decide.outputs.mode == 'create'
         run: |
-          node tests/release-notes.mjs "${{ steps.decide.outputs.version }}" > notes.md
-          gh release create "${{ steps.decide.outputs.tag }}" dist/*.zip --target "$GITHUB_SHA" --title "${{ steps.decide.outputs.tag }}" --notes-file notes.md
+          node tests/release-notes.mjs "${{ steps.decide.outputs.version }}" notes.md title.txt
+          gh release create "${{ steps.decide.outputs.tag }}" dist/*.zip --target "$GITHUB_SHA" --title "$(cat title.txt)" --notes-file notes.md
+      - name: Refresh notes
+        if: steps.decide.outputs.mode == 'notes' && hashFiles(format('.github/release-notes/{0}.md', steps.decide.outputs.tag)) != ''
+        run: |
+          node tests/release-notes.mjs "${{ steps.decide.outputs.version }}" notes.md title.txt
+          gh release edit "${{ steps.decide.outputs.tag }}" --title "$(cat title.txt)" --notes-file notes.md
       - name: Attach zips
         if: steps.decide.outputs.mode == 'upload'
         run: gh release upload "${{ steps.decide.outputs.tag }}" dist/*.zip --clobber

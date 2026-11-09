@@ -105,7 +105,7 @@ npm run test:e2e
 npm run lint:firefox
 ```
 
-Releasing: add the version's section to `CHANGELOG.md`, bump `version` in `manifest.json`, and merge to `main`. The release workflow then creates release `v<version>` with that CHANGELOG section as its notes and attaches the Chrome and Firefox zips. A release published by hand also gets the zips; its tag must be `v` plus the `manifest.json` version.
+Releasing: add the version's section to `CHANGELOG.md`, write the release text in `.github/release-notes/v<version>.md` (first line `# <title>`, English then Chinese), bump `version` in `manifest.json`, and merge to `main`. The release workflow then creates release `v<version>` with that title and text and attaches the Chrome and Firefox zips. Editing that file later and merging it updates the release text. A release published by hand also gets the zips; its tag must be `v` plus the `manifest.json` version.
 
 ## File structure
 

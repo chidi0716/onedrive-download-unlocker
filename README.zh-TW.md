@@ -105,7 +105,7 @@ npm run test:e2e
 npm run lint:firefox
 ```
 
-發布新版：在 `CHANGELOG.md` 加上該版本的段落，更新 `manifest.json` 的 `version`，併進 `main`。工作流程會建立 `v<版本>` release，以該段 CHANGELOG 作為說明，並附上 Chrome 與 Firefox 的 zip。手動發布的 release 也會自動附上 zip，標籤須為 `v` 加上 `manifest.json` 的版本號。
+發布新版：在 `CHANGELOG.md` 加上該版本的段落，在 `.github/release-notes/v<版本>.md` 寫 release 說明（第一行 `# <標題>`，先英文後中文），更新 `manifest.json` 的 `version`，併進 `main`。工作流程會用這個標題和說明建立 `v<版本>` release，並附上 Chrome 與 Firefox 的 zip。之後修改這個檔案再併進 main，會更新 release 說明。手動發布的 release 也會自動附上 zip，標籤須為 `v` 加上 `manifest.json` 的版本號。
 
 ## 檔案結構
 
