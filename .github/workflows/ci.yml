@@ -12,6 +12,8 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm test
+      - name: Release notes for the manifest version
+        run: node tests/release-notes.mjs "$(node -p 'require("./manifest.json").version')" "$RUNNER_TEMP/notes.md" "$RUNNER_TEMP/title.txt"
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
       - run: pwsh build.ps1

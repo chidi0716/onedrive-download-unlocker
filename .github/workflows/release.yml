@@ -1,7 +1,7 @@
 name: Release
 # A push to main that changes manifest.json or release notes creates the release
-# for the manifest version and attaches the zips. Notes: .github/release-notes/
-# v<version>.md (first line "# <title>"), else the CHANGELOG section. If the
+# for the manifest version and attaches the zips. Title and notes: .github/
+# release-notes/v<version>.md (required, layout checked). If the
 # release already exists, only its title and notes are refreshed from that file.
 # A release published by hand gets the zips attached.
 on:
