@@ -1,27 +1,58 @@
-name: Release packages
+name: Release
+# A push to main that changes manifest.json creates the release for its version
+# (notes = that version's CHANGELOG section) and attaches the zips, unless the
+# release already exists. A release published by hand gets the zips attached.
 on:
+  push:
+    branches: [main]
+    paths: [manifest.json]
   release:
     types: [published]
+  workflow_dispatch:
 permissions:
   contents: write
 jobs:
-  package:
+  release:
     runs-on: ubuntu-latest
     env:
-      TAG: ${{ github.event.release.tag_name }}
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.release.tag_name }}
-      - uses: actions/setup-node@v4
+          ref: ${{ github.event.release.tag_name || github.sha }}
+      - name: Decide
+        id: decide
+        run: |
+          VERSION=$(node -p 'require("./manifest.json").version')
+          TAG="v$VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.event_name }}" = release ]; then
+            [ "${{ github.event.release.tag_name }}" = "$TAG" ] || { echo "Tag does not match manifest version $VERSION"; exit 1; }
+            echo "mode=upload" >> "$GITHUB_OUTPUT"
+          elif gh release view "$TAG" >/dev/null 2>&1; then
+            echo "$TAG already released"; echo "mode=skip" >> "$GITHUB_OUTPUT"
+          else
+            echo "mode=create" >> "$GITHUB_OUTPUT"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+      - if: steps.decide.outputs.mode != 'skip'
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-      - name: Verify version
-        run: node -e 'if (require("./manifest.json").version !== process.env.TAG.replace(/^v/, "")) process.exit(1)'
-      - run: npm ci
-      - run: pwsh build.ps1
-      - run: npm run lint:firefox
-      - run: gh release upload "$TAG" dist/*.zip --clobber
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - if: steps.decide.outputs.mode != 'skip'
+        run: npm ci
+      - if: steps.decide.outputs.mode != 'skip'
+        run: npm run check && npm test
+      - if: steps.decide.outputs.mode != 'skip'
+        run: pwsh build.ps1
+      - if: steps.decide.outputs.mode != 'skip'
+        run: npm run lint:firefox
+      - name: Create release
+        if: steps.decide.outputs.mode == 'create'
+        run: |
+          node tests/release-notes.mjs "${{ steps.decide.outputs.version }}" > notes.md
+          gh release create "${{ steps.decide.outputs.tag }}" dist/*.zip --target "$GITHUB_SHA" --title "${{ steps.decide.outputs.tag }}" --notes-file notes.md
+      - name: Attach zips
+        if: steps.decide.outputs.mode == 'upload'
+        run: gh release upload "${{ steps.decide.outputs.tag }}" dist/*.zip --clobber

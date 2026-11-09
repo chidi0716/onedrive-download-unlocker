@@ -6,7 +6,7 @@
 
 ### 新增
 
-- 加入語法檢查、單元測試、瀏覽器端到端測試與 GitHub Actions；推送與拉取請求會執行測試，發布 Release 後會自動附上打包的 zip。
+- 加入語法檢查、單元測試、瀏覽器端到端測試與 GitHub Actions；推送與拉取請求會執行測試；`manifest.json` 版本號更新併進 main 後，自動建立 Release（說明取自 CHANGELOG）並附上打包的 zip。
 
 ## [1.3.2] - 2026-10-23
 

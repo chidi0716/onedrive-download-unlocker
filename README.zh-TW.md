@@ -105,7 +105,7 @@ npm run test:e2e
 npm run lint:firefox
 ```
 
-發布 GitHub Release 後，工作流程會附上 Chrome 與 Firefox 的 zip。標籤移除開頭的 `v` 後，須與 `manifest.json` 的版本號相同。
+發布新版：在 `CHANGELOG.md` 加上該版本的段落，更新 `manifest.json` 的 `version`，併進 `main`。工作流程會建立 `v<版本>` release，以該段 CHANGELOG 作為說明，並附上 Chrome 與 Firefox 的 zip。手動發布的 release 也會自動附上 zip，標籤須為 `v` 加上 `manifest.json` 的版本號。
 
 ## 檔案結構
 

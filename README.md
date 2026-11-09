@@ -105,7 +105,7 @@ npm run test:e2e
 npm run lint:firefox
 ```
 
-Publishing a GitHub Release runs the release workflow and attaches the Chrome and Firefox zips. The tag without its leading `v` must match the version in `manifest.json`.
+Releasing: add the version's section to `CHANGELOG.md`, bump `version` in `manifest.json`, and merge to `main`. The release workflow then creates release `v<version>` with that CHANGELOG section as its notes and attaches the Chrome and Firefox zips. A release published by hand also gets the zips; its tag must be `v` plus the `manifest.json` version.
 
 ## File structure
 
